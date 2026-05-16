@@ -10,14 +10,12 @@ from application.scraping.dto import EventCard, EventDetails
 
 logger = logging.getLogger(__name__)
 
-
 class TrojmiastoScraper(ISourceScraper):
     def __init__(self, fetcher: IFetcher):
         self._fetcher = fetcher
 
     async def discover_events(self, feed_url: str) -> list[EventCard]:
         html = await self._fetcher.fetch_html(feed_url)
-
         tree = HTMLParser(html)
 
         events_dict = self._extract_events_from_json(tree)
@@ -53,7 +51,39 @@ class TrojmiastoScraper(ISourceScraper):
 
                     norm_url = self._normalize_url(event_url)
 
-                    price = item.get("offers", {}).get("price")
+                    raw_offers = item.get("offers")
+                    price_val = None
+                    if isinstance(raw_offers, dict):
+                        price_val = raw_offers.get("price")
+                    elif isinstance(raw_offers, list) and len(raw_offers) > 0 and isinstance(raw_offers[0], dict):
+                        price_val = raw_offers[0].get("price")
+
+                    try:
+                        parsed_price = int(float(price_val)) if price_val is not None else None
+                    except (ValueError, TypeError):
+                        parsed_price = None
+
+                    loc = item.get("location")
+                    city_text = None
+                    location_name = None
+                    if isinstance(loc, dict):
+                        location_name = loc.get("name")
+                        address = loc.get("address")
+                        if isinstance(address, dict):
+                            city_text = address.get("addressLocality")
+                        elif isinstance(address, str):
+                            city_text = address
+                    elif isinstance(loc, str):
+                        location_name = loc
+
+                    perf = item.get("performer")
+                    organizer_name = "Unknown"
+                    if isinstance(perf, dict):
+                        organizer_name = perf.get("name", "Unknown")
+                    elif isinstance(perf, list) and len(perf) > 0 and isinstance(perf[0], dict):
+                        organizer_name = perf[0].get("name", "Unknown")
+                    elif isinstance(perf, str):
+                        organizer_name = perf
 
                     card = EventCard(
                         external_event_id=norm_url.strip('/').split('/')[-1],
@@ -61,11 +91,11 @@ class TrojmiastoScraper(ISourceScraper):
                         title=item.get("name", "Unknown").strip(),
                         event_start_at=self._safe_parse_dt(item.get("startDate")),
                         event_end_at=self._safe_parse_dt(item.get("endDate")),
-                        city_text=item.get("location", {}).get("address", {}).get("addressLocality"),
-                        location=item.get("location", {}).get("name"),
+                        city_text=city_text,
+                        location=location_name,
                         cover_image_url=item.get("image"),
-                        price_min=int(float(price)) if price is not None else None,
-                        source_organizer_name=item.get("performer", {}).get("name", "Unknown"),
+                        price_min=parsed_price,
+                        source_organizer_name=organizer_name,
                         metadata_json={"description": item.get("description")},
                         detail_complete=True
                     )
@@ -74,7 +104,7 @@ class TrojmiastoScraper(ISourceScraper):
             except json.JSONDecodeError:
                 logger.warning("Failed to decode JSON-LD block")
             except Exception as e:
-                logger.error(f"Error parsing JSON event item: {e}")
+                logger.error(f"Error parsing JSON event item: {e}", exc_info=True)
 
         return events_dict
 
