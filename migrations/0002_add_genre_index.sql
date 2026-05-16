@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS id_events_genre ON events(genre);
