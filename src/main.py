@@ -1,108 +1,72 @@
 import asyncio
-import requests
-from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
-import json
+import logging
 
-from domain.events.entities import Event
-from app.runtime import run
+from infrastructure.config import load_settings
+from infrastructure.logging import configure_logging
+from infrastructure.db.pool import create_db_pool, close_db_pool
+
+from infrastructure.repositories.postgres_feed_repository import PostgresFeedRepository
+from infrastructure.repositories.postgres_event_listings_repository import PostgresEventListingsRepository
+from infrastructure.scraping.fetchers.static import StaticFetcher
+from infrastructure.scraping.sources.trojmiasto.scraper import TrojmiastoScraper
+from infrastructure.scraping.registry import ScraperRegistry
+from application.scraping.service import ScraperService
+
+logger = logging.getLogger(__name__)
+
+async def _setup_test_data(pool) -> None:
+    source_id = await pool.fetchval("""
+                                    INSERT INTO sources (code, name, base_url, scraper_type, is_active)
+                                    VALUES ('trojmiasto', 'Trojmiasto.pl', 'https://www.trojmiasto.pl', 'static',
+                                            true) ON CONFLICT (code) DO
+                                    UPDATE SET is_active = true
+                                        RETURNING id;
+                                    """)
+
+    await pool.execute("""
+                       INSERT INTO source_category_feeds (source_id, feed_url, is_active)
+                       SELECT $1,
+                              'https://www.trojmiasto.pl/imprezy/',
+                              true WHERE NOT EXISTS (
+                SELECT 1 FROM source_category_feeds WHERE source_id = $1 AND feed_url = 'https://www.trojmiasto.pl/imprezy/'
+                           );
+                       """, source_id)
+    logger.info("Test data (Source and Feed) ensured in DB.")
 
 
-def scrape_events(url: str) -> list[Event]:
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
-    }
+async def run() -> None:
+    settings = load_settings()
+    configure_logging(settings.log_level)
+    logger.info("Starting Scraper Test Run...")
 
-    print(f"[{datetime.now().strftime('%H:%M:%S')}]  {url}")
-    response = requests.get(url, headers=headers)
-    print(f"Статус ответа от сайта: {response.status_code}")  # Должен быть 200
+    pool = await create_db_pool(settings)
 
-    soup = BeautifulSoup(response.text, 'lxml')
-    events_dict = {}
+    try:
+        await _setup_test_data(pool)
 
-    json_scripts = soup.find_all("script", type="application/ld+json")
-    print(f"found JSON blocks: {len(json_scripts)}")
+        feed_repo = PostgresFeedRepository(pool)
+        listings_repo = PostgresEventListingsRepository(pool)
 
-    for script in json_scripts:
-        try:
-            content = script.text.strip()
-            if not content:
-                continue
+        fetcher = StaticFetcher()
+        trojmiasto_scraper = TrojmiastoScraper(fetcher)
 
-            data = json.loads(content)
+        registry = ScraperRegistry()
+        registry.register("trojmiasto", trojmiasto_scraper)
 
-            items = data if isinstance(data, list) else [data]
+        service = ScraperService(
+            feed_repo=feed_repo,
+            listings_repo=listings_repo,
+            registry=registry,
+            max_workers=2
+        )
 
-            for item in items:
-                if isinstance(item, dict) and item.get("@type") == "Event":
+        await service.run_discovery_cycle()
 
-                    event_url = item.get("url")
-                    if not event_url:
-                        continue
-
-                    start_dt = datetime.fromisoformat(item.get("startDate"))
-                    end_dt_str = item.get("endDate")
-                    end_dt = datetime.fromisoformat(end_dt_str) if end_dt_str else None
-
-                    # Собираем
-                    event_obj = Event(
-                        title=item.get("name", "Unknown"),
-                        description=item.get("description"),
-                        location=item.get("location", {}).get("name"),
-                        start_at=start_dt,
-                        end_at=end_dt,
-                        organizer_name=item.get("performer", {}).get("name", "Unknown"),
-                        url=event_url,
-                        cover_image_url=item.get("image"),
-                        price=int(item["offers"]["price"]) if item.get("offers", {}).get("price") is not None else None
-                    )
-                    events_dict[event_url] = event_obj
-                    print(f"json reading complete: {event_obj.title}")
-
-        except json.JSONDecodeError as e:
-            print(f"error reading: {e}")
-        except Exception as e:
-            print(f"error building: {e}")
-
-    print(f"after first step: {len(events_dict)} events")
-
-    html_cards = soup.select(".event__item__container")
-    print(f"in HTML found cards: {len(html_cards)}")
-
-    for card in html_cards:
-        link_el = card.select_one("a")
-        if not link_el:
-            continue
-
-        card_url = link_el.get("href")
-        if card_url and card_url.startswith('/'):
-            card_url = f"https://{url.split('/')[2]}{card_url}"
-
-        if card_url in events_dict:
-            target_event = events_dict[card_url]
-
-            type_el = card.select_one(".event__item__category")
-            if type_el:
-                target_event.event_type = type_el.text.strip().title()
-
-    return list(events_dict.values())
-
-async def run():
-    TARGET_URL = "https://www.trojmiasto.pl/imprezy/"
-
-    print("sending")
-    events = await asyncio.to_thread(scrape_events, TARGET_URL)
-
-    print("\n--- 🟢 results ---\n")
-    for e in events[:5]:
-        print(f" {e.title}")
-        print(f"type: {e.event_type}")
-        print(f"genre:      {e.genre}")
-        print(f"url:     {e.url}")
-        print("-" * 40)
-
-    print(f"complete: {len(events)}")
-
+    except Exception as e:
+        logger.exception(f"Fatal error during scraping: {e}")
+    finally:
+        await close_db_pool(pool)
+        logger.info("Scraper Test Run finished.")
 
 
 def main() -> None:
