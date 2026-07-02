@@ -8,7 +8,7 @@ from domain.events.repository import IEventRepository
 
 class EventService:
     def __init__(self, event_repository: IEventRepository):
-        self.event_repository = event_repository
+        self._event_repository = event_repository
 
     async def add_event(self, event: Event) -> UUID | None:
         if event.is_finished:

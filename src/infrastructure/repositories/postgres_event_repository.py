@@ -66,12 +66,12 @@ class PostgresEventRepository(IEventRepository):
         rows = await self._pool.fetch(query, event_type)
         return [self._map_to_domain(row) for row in rows]
 
-    async def get_events_for_date(self, start_at: datetime.date) -> Sequence[Event]:
+    async def get_by_start_at(self, start_at: datetime.date) -> Sequence[Event]:
         query = "SELECT * FROM events WHERE DATE (start_at) = $1 ORDER BY start_at ASC"
         rows = await self.pool.fetch(query, start_at)
         return [self._map_to_domain(row) for row in rows]
 
-    async def get_by_genre(self, genre: str) -> Sequence[Event]:
+    async def get_by_event_genre(self, genre: str) -> Sequence[Event]:
         query = "SELECT * FROM events WHERE genre = $1 ORDER BY start_at ASC"
         rows = await self.pool.fetch(query, genre)
         return [self._map_to_domain(row) for row in rows]
