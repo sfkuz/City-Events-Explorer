@@ -54,3 +54,61 @@ def get_main_menu_text_and_kb(user_prefs: dict) -> tuple[str, InlineKeyboardMark
 
     builder.adjust(1)
     return text, builder.as_markup()
+
+def get_search_setup_kb(search_data: dict) -> tuple[str, InlineKeyboardMarkup]:
+    genres = ", ".join(search_data.get("genres", [])) or "Any"
+    types = ", ".join(search_data.get("types", [])) or "Any"
+    date = search_data.get("date_str", "Any Time")
+
+    text = (
+        f"🔎 <b>Find Events</b>\n\n"
+        f"Choose date, event type and genre by which you want to find events :) \n\n"
+        f"📅 Date: {date}\n"
+        f"🎭 Genre: {genres}\n"
+        f"🎪 Type: {types}\n"
+    )
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Choose Date", callback_data=MenuCB(screen="dates", context="search"))
+    builder.button(text="Choose Genre", callback_data=MenuCB(screen="genres", context="search"))
+    builder.button(text="Choose Event Type", callback_data=MenuCB(screen="types", context="search"))
+    builder.button(text="Find Events", callback_data=SearchActionCB(action="find"))
+    builder.button(text="Go Home", callback_data=MenuCB(screen="main"))
+
+    builder.adjust(1)
+    return text, builder.as_markup()
+
+def det_dates_menu_kb() -> tuple[str, InlineKeyboardMarkup]:
+    text = "📅 <b>Choose Date</b>\nWhen do you want to go out?"
+    builder = InlineKeyboardBuilder()
+
+    builder.button(text="This weekend", callback_data=FilterCB(category="date", action="set", value="this_weekend", context="search"))
+    builder.button(text="Next weekend", callback_data=FilterCB(category="date", action="set", value="next_weekend", context="search"))
+    builder.button(text="This month", callback_data=FilterCB(category="date", action="set", value="this_month", context="search"))
+    builder.button(text="Own dates", callback_data=FilterCB(category="date", action="set", value="own", context="search"))
+    builder.button(text="◀️ Back", callback_data=SearchActionCB(action="setup"))
+
+    builder.adjust(1)
+    return text, builder.as_markup()
+
+def get_filter_menu_kb(category: str, available_options: list[str], selected_options: list[str], context: str) -> tuple[str, InlineKeyboardMarkup]:
+    title = "Genre" if category == "genre" else "Event type"
+    selected_text = ", ".join(selected_options) if selected_options else "None"
+
+    text = f"🏷 <b>{title}</b>\nSelected: {selected_text}\n\nChoose {title.lower()}s:"
+    builder = InlineKeyboardBuilder()
+
+    for option in available_options:
+        icon = "✅ " if option in selected_options else "⚪"
+        builder.button(text=f"{icon}{option}", callback_data=FilterCB(category=category, action="toggle", value=option, context=context))
+
+    builder.adjust(2)
+    builder.row(
+        InlineKeyboardButton(text="Select all", callback_data=FilterCB(category=category, action="select_all", context=context).pack()),
+        InlineKeyboardButton(text="Clear all", callback_data=FilterCB(category=category, action="clear_all", context=context).pack())
+    )
+
+    back_cb = MenuCB(screen="main").pack() if context == "notify" else SearchActionCB(action="setup").pack()
+    builder.row(InlineKeyboardButton(text="< Back", callback_data=back_cb))
+
+    return text, builder.as_markup()
