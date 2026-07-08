@@ -7,7 +7,7 @@ class EventPaginationCB(CallbackData, prefix="event"):
 
 class MenuCB(CallbackData, prefix="menu"):
     screen: str
-    contex: str = "notify"
+    context: str = "notify"
 
 class FilterCB(CallbackData, prefix="filter"):
     category: str
