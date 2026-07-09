@@ -78,7 +78,7 @@ def get_search_setup_kb(search_data: dict) -> tuple[str, InlineKeyboardMarkup]:
     builder.adjust(1)
     return text, builder.as_markup()
 
-def det_dates_menu_kb() -> tuple[str, InlineKeyboardMarkup]:
+def get_dates_menu_kb() -> tuple[str, InlineKeyboardMarkup]:
     text = "📅 <b>Choose Date</b>\nWhen do you want to go out?"
     builder = InlineKeyboardBuilder()
 
