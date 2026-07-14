@@ -77,7 +77,9 @@ async def open_filters(callback: CallbackQuery, callback_data: MenuCB, state: FS
 
 @main_router.callback_query(MenuCB.filter(F.screen == 'dates'))
 async def open_dates(callback: CallbackQuery):
-    pass
+    text, markup = get_dates_menu_kb()
+    await callback.message.edit_text(text=text, reply_markup=markup, parse_mode='HTML')
+    await callback.answer()
 
 @main_router.callback_query(FilterCB.filter())
 async def handle_filters(callback: CallbackQuery, callback_data: FilterCB, state: FSMContext):
