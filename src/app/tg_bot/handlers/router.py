@@ -129,7 +129,14 @@ async def handle_filters(callback: CallbackQuery, callback_data: FilterCB, state
 
 @main_router.message(SearchEventState.waiting_for_dates)
 async def process_own_dates(message: Message, state: FSMContext):
-    pass
+    user_text = message.text
+    #add validation later
+    await state.update_data(date_str=user_text)
+    await state.set_state(SearchEventState.setup)
+
+    search_data = await state.get_data()
+    text, markup = get_search_setup_kb(search_data)
+    await message.answer(text=text, reply_markup=markup, parse_mode='HTML')
 
 @main_router.callback_query(SearchActionCB.filter(F.action == 'find'))
 async def execute_search(callback: CallbackQuery, state: FSMContext, event_service: EventService):
