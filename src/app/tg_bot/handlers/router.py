@@ -61,7 +61,19 @@ async def setup_search(callback: CallbackQuery, state: FSMContext):
 
 @main_router.callback_query(MenuCB.filter(F.screen.in_(['genres', 'types'])))
 async def open_filters(callback: CallbackQuery, callback_data: MenuCB, state: FSMContext):
-    pass
+    category = 'genre' if callback_data.screen == 'genres' else 'type'
+    available_list = AVAILABLE_GENRES if category == 'genre' else AVAILABLE_TYPES
+
+    if callback_data.context == 'search':
+        data = await state.get_data()
+        selected = data.get(callback_data.screen, [])
+    else:
+        prefs = get_user_prefs(callback.from_user.id)
+        selected = prefs[callback_data.screen]
+
+    text, markup = get_filter_menu_kb(category, available_list, selected, callback_data.context)
+    await callback.message.edit_text(text=text, reply_markup=markup, parse_mode='HTML')
+    await callback.answer()
 
 @main_router.callback_query(MenuCB.filter(F.screen == 'dates'))
 async def open_dates(callback: CallbackQuery):
