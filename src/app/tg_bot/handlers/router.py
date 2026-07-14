@@ -43,7 +43,12 @@ async def show_main_menu(message: Message, state: FSMContext):
 
 @main_router.callback_query(MenuCB.filter(F.screen == 'main'))
 async def go_home(callback: CallbackQuery, state: FSMContext):
-    pass
+    await state.clear()
+    prefs = get_user_prefs(callback.from_user.id)
+    text, markup = get_main_menu_text_and_kb(prefs)
+    await callback.message.delete()
+    await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
+    await callback.answer()
 
 @main_router.callback_query(SearchActionCB.filter(F.action == 'setup'))
 async def setup_search(callback: CallbackQuery, state: FSMContext):
