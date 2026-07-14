@@ -83,7 +83,49 @@ async def open_dates(callback: CallbackQuery):
 
 @main_router.callback_query(FilterCB.filter())
 async def handle_filters(callback: CallbackQuery, callback_data: FilterCB, state: FSMContext):
-    pass
+    if callback_data.category == 'date' and callback_data.value == 'own':
+        await state.set_state(SearchEventState.waiting_for_dates)
+        await callback.message.edit_text(
+            'Please send the date range in format DD.MM - DD.MM (e.g. 12.10 - 15.10)'
+        )
+        await callback.answer()
+        return
+
+    if callback_data.category == 'date':
+        await state.update_data(date_str=callback_data.value)
+        search_data = await state.get_data()
+        text, markup = get_search_setup_kb(search_data)
+        await callback.message.edit_text(text=text, reply_markup=markup, parse_mode='HTML')
+        return
+
+    list_key = 'genres' if callback_data.category == 'genre' else 'types'
+    available_list = AVAILABLE_GENRES if callback_data.category == 'genre' else AVAILABLE_TYPES
+
+    if callback_data.context == 'search':
+        data = await state.get_data()
+        current_list = data.get(list_key, [])
+    else:
+        prefs = get_user_prefs(callback.from_user.id)
+        current_list = prefs[list_key]
+
+    if callback_data.action == 'toggle':
+        if callback_data.value in current_list:
+            current_list.remove(callback_data.value)
+        else:
+            current_list.append(callback_data.value)
+    elif callback_data.action == 'select_all':
+        current_list = available_list.copy()
+    elif callback_data.action == 'clear_all':
+        current_list = []
+
+    if callback_data.context == 'search':
+        await state.update_data({list_key: current_list})
+    else:
+        prefs[list_key] = current_list
+
+    text, markup = get_filter_menu_kb(callback_data.category, available_list, current_list, callback_data.context)
+    await callback.message.edit_text(text=text, reply_markup=markup, parse_mode='HTML')
+    await callback.answer()
 
 @main_router.message(SearchEventState.waiting_for_dates)
 async def process_own_dates(message: Message, state: FSMContext):
