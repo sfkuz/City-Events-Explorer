@@ -36,7 +36,10 @@ def get_user_prefs(user_id: int) -> dict:
 
 @main_router.message(Command('start', 'menu'))
 async def show_main_menu(message: Message, state: FSMContext):
-    pass
+    await state.clear()
+    prefs = get_user_prefs(message.from_user.id)
+    text, markup = get_main_menu_text_and_kb(prefs)
+    await message.answer(text, reply_markup=markup, parse_mode='HTML')
 
 @main_router.callback_query(MenuCB.filter(F.screen == 'main'))
 async def go_home(callback: CallbackQuery, state: FSMContext):
