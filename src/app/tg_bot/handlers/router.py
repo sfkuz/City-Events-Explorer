@@ -1,7 +1,7 @@
 from aiogram import Router, F
 from aiogram.enums import ChatAction
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup
 from aiogram.fsm.context import FSMContext
 
 from application.events.service import EventService
@@ -140,4 +140,19 @@ async def process_own_dates(message: Message, state: FSMContext):
 
 @main_router.callback_query(SearchActionCB.filter(F.action == 'find'))
 async def execute_search(callback: CallbackQuery, state: FSMContext, event_service: EventService):
-    pass
+    search_data = await state.get_data()
+    #add search logic
+    events = await event_service.get_events_for_today()
+
+    if not events:
+        await callback.answer('Nothing found matching your filters 😔', show_alert=True)
+        return
+
+    text, photo_url = render_event_card(events[0])
+    markup = get_event_pagination_keyboard(current_index=0, total_count=len(events))
+
+    await callback.message.delete()
+    if photo_url:
+        await callback.message.answer_photo(photo=photo_url, caption=text, reply_markup=markup, parse_mode='HTML')
+    else:
+        await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
