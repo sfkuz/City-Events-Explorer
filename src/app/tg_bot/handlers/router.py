@@ -52,7 +52,12 @@ async def go_home(callback: CallbackQuery, state: FSMContext):
 
 @main_router.callback_query(SearchActionCB.filter(F.action == 'setup'))
 async def setup_search(callback: CallbackQuery, state: FSMContext):
-    pass
+    await state.set_state(SearchEventState.setup)
+    search_data = await state.get_data()
+    text, markup = get_search_setup_kb(search_data)
+    await callback.message.delete()
+    await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
+    await callback.answer()
 
 @main_router.callback_query(MenuCB.filter(F.screen.in_(['genres', 'types'])))
 async def open_filters(callback: CallbackQuery, callback_data: MenuCB, state: FSMContext):
