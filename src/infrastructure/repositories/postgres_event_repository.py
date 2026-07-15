@@ -79,3 +79,38 @@ class PostgresEventRepository(IEventRepository):
     async def delete(self, event_id: UUID) -> None:
         query = "DELETE FROM events WHERE id = $1"
         await self._pool.execute(query, event_id)
+
+    async def search_events(
+            self,
+            genres: list[str] = None,
+            types: list[str] = None,
+            date_from: datetime = None,
+            date_to: datetime = None
+    ) -> Sequence[Event]:
+        query = "SELECT * FROM events WHERE 1=1"
+        args = []
+        arg_idx = 1
+
+        if genres:
+            query += f'AND genre = ANY(${arg_idx}::text[])'
+            args.append(genres)
+            arg_idx += 1
+
+        if types:
+            query += f'AND event_type = ANY(${arg_idx}::text[])'
+            args.append(types)
+            arg_idx += 1
+
+        if date_from:
+            query += f'AND start_at >= ${arg_idx}'
+            args.append(date_from)
+            arg_idx += 1
+
+        if date_to:
+            query += f'AND start_at <= ${arg_idx}'
+            args.append(date_to)
+            arg_idx += 1
+
+        query += "ORDER BY start_at ASC LIMIT 100"
+        rows = await self._pool.fetch(query, *args)
+        return [self._map_to_domain(row) for row in rows]
