@@ -36,3 +36,12 @@ class IEventRepository(ABC):
     @abstractmethod
     async def get_by_start_at(self, start_at: datetime) -> Sequence[Event]:
         ...
+
+    @abstractmethod
+    async def search_events(
+            self,
+            genres: list[str] = None,
+            types: list[str] = None,
+            date_from: datetime = None,
+            date_to: datetime = None) -> Sequence[Event]:
+        ...
