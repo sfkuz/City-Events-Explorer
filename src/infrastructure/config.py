@@ -17,7 +17,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
-
+    tg_bot_token: str = Field(alias="TG_BOT_TOKEN")
     app_name: str = "user-app"
     app_env: str = "dev"
     log_level: str = "INFO"
