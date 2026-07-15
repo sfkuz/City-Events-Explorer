@@ -3,6 +3,7 @@ from aiogram.enums import ChatAction
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup
 from aiogram.fsm.context import FSMContext
+from datetime import datetime
 
 from application.events.service import EventService
 from app.tg_bot.handlers.callbacks import EventPaginationCB, MenuCB, SearchActionCB, FilterCB
@@ -130,8 +131,30 @@ async def handle_filters(callback: CallbackQuery, callback_data: FilterCB, state
 @main_router.message(SearchEventState.waiting_for_dates)
 async def process_own_dates(message: Message, state: FSMContext):
     user_text = message.text
-    #add validation later
-    await state.update_data(date_str=user_text)
+
+    try:
+        parts = [p.strip() for p in user_text.split('-')]
+        if len(parts) != 2:
+            raise ValueError('invalid format')
+
+        start_str, end_str = parts
+
+        start_date = datetime.strptime(start_str, '%d.%m.%Y')
+        end_date = datetime.strptime(end_str, '%d.%m.%Y')
+
+        if end_date < start_date:
+            await message.answer('The end date cannot be less than the start date. Try again! e.g. 04.10.2026 - 16.12.2026')
+            return
+    except ValueError:
+        await message.answer('Invalid format. Please write date in this format: DD.MM.YYYY - DD.MM.YYYY (e.g. 04.10.2026 - 16.12.2026)')
+        return
+
+    await state.update_data(
+        date_str=f'{start_str}-{end_str}',
+        date_from=start_date.isoformat(),
+        date_to=end_date.isoformat()
+    )
+
     await state.set_state(SearchEventState.setup)
 
     search_data = await state.get_data()
