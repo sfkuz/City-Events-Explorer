@@ -4,13 +4,29 @@ import asyncio
 import logging
 import signal
 from contextlib import AsyncExitStack
+from aiogram import Bot, Dispatcher
 
-from app.bootstrap import bootstrap_application
+from app.bootstrap import bootstrap_application, Application
 from infrastructure.config import load_settings
 from infrastructure.logging import configure_logging
+from application.events.service import EventService
+from infrastructure.repositories.postgres_event_repository import PostgresEventRepository
+from app.tg_bot.handlers.router import main_router
 
 logger = logging.getLogger(__name__)
 
+async def run_bot(app: Application) -> None:
+    bot = Bot(token=app.settings.tg_bot_token)
+    dp = Dispatcher()
+
+    event_repo = PostgresEventRepository(app.db_pool)
+    event_service = EventService(event_repo)
+
+    dp['event_service'] = event_service
+    dp.include_router(main_router)
+
+    logger.info('Starting bot...')
+    await dp.start_polling(bot)
 
 async def _wait_for_shutdown_signal() -> None:
     loop = asyncio.get_running_loop()
@@ -40,11 +56,13 @@ async def run() -> None:
             app = await bootstrap_application(stack)
 
             logger.info("Application started successfully")
+            bot_task = asyncio.create_task(run_bot(app))
             logger.info("Waiting for shutdown signal...")
 
             await _wait_for_shutdown_signal()
 
             logger.info("Application stopping...")
+            bot_task.cancel()
 
     except asyncio.CancelledError:
         logger.warning("Application task cancelled")
