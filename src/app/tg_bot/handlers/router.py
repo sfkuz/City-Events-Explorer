@@ -87,7 +87,7 @@ async def handle_filters(callback: CallbackQuery, callback_data: FilterCB, state
     if callback_data.category == 'date' and callback_data.value == 'own':
         await state.set_state(SearchEventState.waiting_for_dates)
         await callback.message.edit_text(
-            'Please send the date range in format DD.MM - DD.MM (e.g. 12.10 - 15.10)'
+            'Please send the date range in format DD.MM.YYYY - DD.MM.YYYY (e.g. 04.10.2026 - 16.12.2026)'
         )
         await callback.answer()
         return
