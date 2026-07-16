@@ -164,12 +164,28 @@ async def process_own_dates(message: Message, state: FSMContext):
 @main_router.callback_query(SearchActionCB.filter(F.action == 'find'))
 async def execute_search(callback: CallbackQuery, state: FSMContext, event_service: EventService):
     search_data = await state.get_data()
-    #add search logic
-    events = await event_service.get_events_for_today()
+
+    genres = search_data.get('genres', [])
+    types = search_data.get('types', [])
+
+    date_val = search_data.get('date_value')
+    custom_from = search_data.get('date_from')
+    custom_to = search_data.get('date_to')
+
+    date_from, date_to = resolve_dates(date_val, custom_from, custom_to)
+
+    events = await event_service.search_events(
+        genres=genres if genres else None,
+        types=types if types else None,
+        date_from=date_from,
+        date_to=date_to
+    )
 
     if not events:
         await callback.answer('Nothing found matching your filters 😔', show_alert=True)
         return
+
+    await state.update_data(current_view='search')
 
     text, photo_url = render_event_card(events[0])
     markup = get_event_pagination_keyboard(current_index=0, total_count=len(events))
