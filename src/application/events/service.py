@@ -31,3 +31,12 @@ class EventService:
     async def get_events_for_today(self) -> Sequence[Event]:
         today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0)
         return await self._event_repository.get_by_start_at(today)
+
+    async def search_events(
+            self,
+            genres: list[str] | None = None,
+            types: list[str] | None = None,
+            date_from: datetime | None = None,
+            date_to: datetime | None = None,
+            ) -> Sequence[Event]:
+        return await self._event_repository.search_events(genres=genres, types=types, date_from=date_from, date_to=date_to)
