@@ -1,10 +1,10 @@
 from aiogram import Router, F
-from aiogram.enums import ChatAction
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup
 from aiogram.fsm.context import FSMContext
 from datetime import datetime
 
+from app.tg_bot.utils import resolve_dates
 from application.events.service import EventService
 from app.tg_bot.handlers.callbacks import EventPaginationCB, MenuCB, SearchActionCB, FilterCB
 from app.tg_bot.handlers.states import SearchEventState
@@ -195,3 +195,47 @@ async def execute_search(callback: CallbackQuery, state: FSMContext, event_servi
         await callback.message.answer_photo(photo=photo_url, caption=text, reply_markup=markup, parse_mode='HTML')
     else:
         await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
+
+@main_router.callback_query(EventPaginationCB.filter())
+async def paginate_events(callback: CallbackQuery, callback_data: EventPaginationCB, state: FSMContext, event_service: EventService):
+    user_data = await state.get_data()
+    current_view = user_data.get('current_view', 'today')
+
+    if current_view == 'search':
+        date_from, date_to = resolve_dates(
+            user_data.get('date_value'),
+            user_data.get('date_from'),
+            user_data.get('date_to')
+        )
+        events = await event_service.search_events(
+            genres=user_data.get('genres', []) or None,
+            types=user_data.get('types', []) or None,
+            date_from=date_from,
+            date_to=date_to
+        )
+    else:
+        events = await event_service.get_events_for_today()
+
+    if not events:
+        await callback.answer('Nothing found matching your filters.', show_alert=True)
+        return
+
+    new_index = callback_data.current_index
+    if callback_data.action == 'next':
+        new_index += 1
+    elif callback_data.action == 'prev':
+        new_index -= 1
+
+    if new_index < 0 or new_index >= len(events):
+        await callback.answer('this is the end of the list', show_alert=True)
+        return
+
+    text, photo_url = render_event_card(events[new_index])
+    markup = get_event_pagination_keyboard(current_index=new_index, total_count=len(events))
+
+    await callback.message.delete()
+    if photo_url:
+        await callback.message.answer_photo(photo=photo_url, caption=text, reply_markup=markup, parse_mode='HTML')
+    else:
+        await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
+    await callback.answer()
