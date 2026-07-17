@@ -197,6 +197,24 @@ async def process_own_dates(message: Message, state: FSMContext):
     text, markup = get_search_setup_kb(search_data)
     await message.answer(text=text, reply_markup=markup, parse_mode='HTML')
 
+@main_router.message(Command('events'))
+async def show_events_cmd(message: Message, state: FSMContext, event_service: EventService):
+    await state.update_data(current_view='today')
+
+    events = await event_service.get_events_for_today()
+
+    if not events:
+        await message.answer("There are no events for today.")
+        return
+
+    text, photo_url = render_event_card(events[0])
+    markup = get_event_pagination_keyboard(current_index=0, total_count=len(events))
+
+    if photo_url:
+        await message.answer_photo(photo=photo_url, caption=text, reply_markup=markup, parse_mode='HTML')
+    else:
+        await message.answer(text=text, reply_markup=markup, parse_mode='HTML')
+
 @main_router.callback_query(SearchActionCB.filter(F.action == 'find'))
 async def execute_search(callback: CallbackQuery, state: FSMContext, event_service: EventService):
     search_data = await state.get_data()
