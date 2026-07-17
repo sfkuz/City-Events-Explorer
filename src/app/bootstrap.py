@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import asyncpg
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
 
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 @dataclass(slots=True, kw_only=True)
 class Application:
     settings: Settings
-    db_pool: object
+    db_pool: asyncpg.Pool
 
 
 async def bootstrap_application(stack: AsyncExitStack) -> Application:
