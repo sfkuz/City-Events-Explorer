@@ -1,7 +1,9 @@
 from aiogram import Router, F
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup
+from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
+
+import logging
 from datetime import datetime
 
 from app.tg_bot.utils import resolve_dates
@@ -16,6 +18,8 @@ from app.tg_bot.handlers.views import (
 
 main_router = Router()
 
+logger = logging.getLogger(__name__)
+
 AVAILABLE_GENRES = [
     'jazz', 'pop', 'rock/punk', 'muzyka poważna',
     'muzyka elektroniczna', 'muzyka filmowa',
@@ -29,7 +33,7 @@ AVAILABLE_TYPES = [
     'tragi, konferencje', 'film, kino'
 ]
 
-mock_user_db = {}
+mock_user_db: dict[int, dict] = {}
 def get_user_prefs(user_id: int) -> dict:
     if user_id not in mock_user_db:
         mock_user_db[user_id] = {'notify': True, 'genres': [], 'types': []}
@@ -47,8 +51,10 @@ async def go_home(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     prefs = get_user_prefs(callback.from_user.id)
     text, markup = get_main_menu_text_and_kb(prefs)
-    await callback.message.delete()
-    await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
+
+    if isinstance(callback.message, Message):
+        await callback.message.delete()
+        await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
     await callback.answer()
 
 @main_router.callback_query(SearchActionCB.filter(F.action == 'setup'))
@@ -56,8 +62,10 @@ async def setup_search(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SearchEventState.setup)
     search_data = await state.get_data()
     text, markup = get_search_setup_kb(search_data)
-    await callback.message.delete()
-    await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
+
+    if isinstance(callback.message, Message):
+        await callback.message.delete()
+        await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
     await callback.answer()
 
 @main_router.callback_query(MenuCB.filter(F.screen.in_(['genres', 'types'])))
@@ -70,66 +78,93 @@ async def open_filters(callback: CallbackQuery, callback_data: MenuCB, state: FS
         selected = data.get(callback_data.screen, [])
     else:
         prefs = get_user_prefs(callback.from_user.id)
-        selected = prefs[callback_data.screen]
+        selected = prefs[callback_data.screen].copy()
 
     text, markup = get_filter_menu_kb(category, available_list, selected, callback_data.context)
-    await callback.message.edit_text(text=text, reply_markup=markup, parse_mode='HTML')
+
+    if isinstance(callback.message, Message):
+        await callback.message.edit_text(text=text, reply_markup=markup, parse_mode='HTML')
     await callback.answer()
 
 @main_router.callback_query(MenuCB.filter(F.screen == 'dates'))
 async def open_dates(callback: CallbackQuery):
     text, markup = get_dates_menu_kb()
-    await callback.message.edit_text(text=text, reply_markup=markup, parse_mode='HTML')
+    if isinstance(callback.message, Message):
+        await callback.message.edit_text(text=text, reply_markup=markup, parse_mode='HTML')
     await callback.answer()
 
 @main_router.callback_query(FilterCB.filter())
 async def handle_filters(callback: CallbackQuery, callback_data: FilterCB, state: FSMContext):
-    if callback_data.category == 'date' and callback_data.value == 'own':
+    if callback_data.category == "notify" and callback_data.action == "toggle":
+        prefs = get_user_prefs(callback.from_user.id)
+        prefs["notify"] = not prefs["notify"]
+
+        text, markup = get_main_menu_text_and_kb(prefs)
+
+        if isinstance(callback.message, Message):
+            await callback.message.edit_text(text=text, reply_markup=markup, parse_mode="HTML")
+        await callback.answer("Notification settings have been changed")
+        return
+
+    if callback_data.category == "date" and callback_data.value == "own":
         await state.set_state(SearchEventState.waiting_for_dates)
-        await callback.message.edit_text(
-            'Please send the date range in format DD.MM.YYYY - DD.MM.YYYY (e.g. 04.10.2026 - 16.12.2026)'
-        )
+        if isinstance(callback.message, Message):
+            await callback.message.edit_text(
+                "📅 <b>Entering your own dates</b>\n\n"
+                "Please enter the date range strictly in the format <b>DD.MM.YYYY - DD.MM.YYYY</b>\n"
+                "<i>(e.g.: 04.10.2026 - 16.12.2026)</i>:",
+                parse_mode="HTML"
+            )
         await callback.answer()
         return
 
-    if callback_data.category == 'date':
-        await state.update_data(date_str=callback_data.value)
+    if callback_data.category == "date":
+        display_name = (callback_data.value or "").replace("_", " ").title()
+
+        await state.update_data(date_value=callback_data.value, date_str=display_name)
         search_data = await state.get_data()
         text, markup = get_search_setup_kb(search_data)
-        await callback.message.edit_text(text=text, reply_markup=markup, parse_mode='HTML')
+        if isinstance(callback.message, Message):
+            await callback.message.edit_text(text=text, reply_markup=markup, parse_mode="HTML")
         return
 
-    list_key = 'genres' if callback_data.category == 'genre' else 'types'
-    available_list = AVAILABLE_GENRES if callback_data.category == 'genre' else AVAILABLE_TYPES
+    list_key = "genres" if callback_data.category == "genre" else "types"
+    available_list = AVAILABLE_GENRES if callback_data.category == "genre" else AVAILABLE_TYPES
 
-    if callback_data.context == 'search':
+    if callback_data.context == "search":
         data = await state.get_data()
         current_list = data.get(list_key, [])
     else:
         prefs = get_user_prefs(callback.from_user.id)
-        current_list = prefs[list_key]
+        current_list = prefs[list_key].copy()
 
-    if callback_data.action == 'toggle':
+    if callback_data.action == "toggle":
         if callback_data.value in current_list:
             current_list.remove(callback_data.value)
         else:
             current_list.append(callback_data.value)
-    elif callback_data.action == 'select_all':
+    elif callback_data.action == "select_all":
         current_list = available_list.copy()
-    elif callback_data.action == 'clear_all':
+    elif callback_data.action == "clear_all":
         current_list = []
 
-    if callback_data.context == 'search':
+    if callback_data.context == "search":
         await state.update_data({list_key: current_list})
     else:
         prefs[list_key] = current_list
 
     text, markup = get_filter_menu_kb(callback_data.category, available_list, current_list, callback_data.context)
-    await callback.message.edit_text(text=text, reply_markup=markup, parse_mode='HTML')
+    if isinstance(callback.message, Message):
+        await callback.message.edit_text(text=text, reply_markup=markup, parse_mode="HTML")
     await callback.answer()
+
 
 @main_router.message(SearchEventState.waiting_for_dates)
 async def process_own_dates(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer("Please send the dates in text")
+        return
+
     user_text = message.text
 
     try:
@@ -150,6 +185,7 @@ async def process_own_dates(message: Message, state: FSMContext):
         return
 
     await state.update_data(
+        date_value='own',
         date_str=f'{start_str}-{end_str}',
         date_from=start_date.isoformat(),
         date_to=end_date.isoformat()
@@ -190,11 +226,13 @@ async def execute_search(callback: CallbackQuery, state: FSMContext, event_servi
     text, photo_url = render_event_card(events[0])
     markup = get_event_pagination_keyboard(current_index=0, total_count=len(events))
 
-    await callback.message.delete()
-    if photo_url:
-        await callback.message.answer_photo(photo=photo_url, caption=text, reply_markup=markup, parse_mode='HTML')
-    else:
-        await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
+    if isinstance(callback.message, Message):
+        await callback.message.delete()
+        if photo_url:
+            await callback.message.answer_photo(photo=photo_url, caption=text, reply_markup=markup, parse_mode='HTML')
+        else:
+            await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
+    await callback.answer()
 
 @main_router.callback_query(EventPaginationCB.filter())
 async def paginate_events(callback: CallbackQuery, callback_data: EventPaginationCB, state: FSMContext, event_service: EventService):
@@ -233,9 +271,10 @@ async def paginate_events(callback: CallbackQuery, callback_data: EventPaginatio
     text, photo_url = render_event_card(events[new_index])
     markup = get_event_pagination_keyboard(current_index=new_index, total_count=len(events))
 
-    await callback.message.delete()
-    if photo_url:
-        await callback.message.answer_photo(photo=photo_url, caption=text, reply_markup=markup, parse_mode='HTML')
-    else:
-        await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
+    if isinstance(callback.message, Message):
+        await callback.message.delete()
+        if photo_url:
+            await callback.message.answer_photo(photo=photo_url, caption=text, reply_markup=markup, parse_mode='HTML')
+        else:
+            await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
     await callback.answer()
