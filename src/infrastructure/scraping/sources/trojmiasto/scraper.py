@@ -96,7 +96,7 @@ class TrojmiastoScraper(ISourceScraper):
                         cover_image_url=item.get("image"),
                         price_min=parsed_price,
                         source_organizer_name=organizer_name,
-                        metadata_json={"description": item.get("description")},
+                        metadata_json={},
                         detail_complete=True
                     )
                     events_dict[norm_url] = card

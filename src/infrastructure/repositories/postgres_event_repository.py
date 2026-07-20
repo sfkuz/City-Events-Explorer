@@ -15,7 +15,6 @@ class PostgresEventRepository(IEventRepository):
         return Event(
             id=row["id"],
             title=row["title"],
-            description=row["description"],
             location=row["location"],
             genre=row["genre"],
             event_type=row["event_type"],
@@ -32,21 +31,26 @@ class PostgresEventRepository(IEventRepository):
     async def add(self, event: Event) -> None:
         query = """
             INSERT INTO events (
-            id, title, description, location, genre, event_type,
+            id, title, location, genre, event_type,
             start_at, end_at, organizer_name, url,
             cover_image_url, price, created_at, updated_at) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13)
+                ON CONFLICT (url) DO UPDATE SET 
+                title = EXCLUDED.title,
+                location = EXCLUDED.location,
+                start_at = EXCLUDED.start_at,
+                end_at = EXCLUDED.end_at,
+                price = EXCLUDED.price,
+                cover_image_url = EXCLUDED.cover_image_url,
+                updated_at = NOW()
         """
-        try:
-            await self._pool.execute(
-                query,
-                event.id, event.title, event.description, event.location,
-                event.genre, event.event_type, event.start_at, event.end_at,
-                event.organizer_name, event.url, event.cover_image_url,
-                event.price, event.created_at, event.updated_at
-            )
-        except asyncpg.UniqueViolationError:
-            raise
+        await self._pool.execute(
+            query,
+            event.id, event.title, event.location,
+            event.genre, event.event_type, event.start_at, event.end_at,
+            event.organizer_name, event.url, event.cover_image_url,
+            event.price, event.created_at, event.updated_at
+        )
 
     async def get_by_id(self, event_id: UUID) -> Event:
         query = "SELECT * FROM events WHERE id = $1"

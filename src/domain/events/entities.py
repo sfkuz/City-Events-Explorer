@@ -8,7 +8,6 @@ from uuid import UUID, uuid4
 class Event:
     id: UUID = field(default_factory=uuid4)
     title: str
-    description: str | None = None
     location: str | None = None
     genre: str | None = None
     event_type: str | None = None
