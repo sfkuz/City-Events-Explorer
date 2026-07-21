@@ -5,6 +5,7 @@ import logging
 from infrastructure.scraping.registry import ScraperRegistry
 from infrastructure.repositories.postgres_feed_repository import PostgresFeedRepository
 from infrastructure.repositories.postgres_event_listings_repository import PostgresEventListingsRepository
+from application.scraping.normalize import NormalizationService
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +16,13 @@ class ScraperService:
             feed_repo: PostgresFeedRepository,
             listings_repo: PostgresEventListingsRepository,
             registry: ScraperRegistry,
+            normalization_service: NormalizationService,
             max_workers: int = 4
     ) -> None:
         self._feed_repo = feed_repo
         self._listings_repo = listings_repo
         self._registry = registry
+        self._normalization_service = normalization_service
         self._semaphore = asyncio.Semaphore(max_workers)
 
     async def run_discovery_cycle(self) -> None:
@@ -31,8 +34,8 @@ class ScraperService:
             return
 
         tasks = [self._process_feed(feed) for feed in feeds]
-
         await asyncio.gather(*tasks)
+        await self._normalization_service.run_normalization()
 
         logger.info("Discovery cycle completed.")
 
