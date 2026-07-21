@@ -1,3 +1,5 @@
+import html
+
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from domain.events.entities import Event
@@ -7,12 +9,17 @@ def render_event_card(event: Event) -> tuple[str, str | None]:
     price_text = f"{event.price} PLN" if event.price else "Bezpłatny"
     date_text = event.start_at.strftime("%d.%m.%Y %H:%M")
 
+    safe_title = html.escape(event.title)
+    safe_location = html.escape(event.location or 'not specified')
+    safe_genre = html.escape(event.genre or 'not specified')
+    safe_type = html.escape(event.event_type or 'not specified')
+
     text = (
-        f"<b>{event.title}</b>\n\n"
+        f"<b>{safe_title}</b>\n\n"
         f"📅Date: {date_text}\n"
-        f"📍Location: {event.location or 'not specified'}\n"
-        f"🎭Genre: {event.genre or 'not specified'}\n"
-        f"🎪Type: {event.event_type or 'not specified'}\n"
+        f"📍Location: {safe_location}\n"
+        f"🎭Genre: {safe_genre.title()}\n"
+        f"🎪Type: {safe_type.title()}\n"
         f"💰Price: {price_text}\n"
         f"<a href='{event.url}'>Click here</a>"
     )
