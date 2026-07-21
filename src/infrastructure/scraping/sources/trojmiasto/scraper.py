@@ -112,23 +112,28 @@ class TrojmiastoScraper(ISourceScraper):
         html_cards = tree.css(".event__item__container")
 
         for html_card in html_cards:
-            link_el = html_card.css_first("a")
-            if not link_el or not link_el.attributes.get("href"):
+            try:
+                link_el = html_card.css_first("a")
+                if not link_el or not link_el.attributes.get("href"):
+                    continue
+
+                raw_url = urljoin(feed_url, link_el.attributes["href"])
+                norm_url = self._normalize_url(raw_url)
+
+                if norm_url in events_dict:
+                    target_event = events_dict[norm_url]
+
+                    type_el = html_card.css_first(".event__item__category")
+                    if type_el:
+                        target_event.event_type = type_el.text(strip=True).lower()
+
+                    genre_el = html_card.css_first(".event__item__types")
+                    if genre_el:
+                        target_event.genre = genre_el.text(strip=True).lower()
+
+            except Exception as e:
+                logger.error(f"Error enriching HTML card: {e}", exc_info=True)
                 continue
-
-            raw_url = urljoin(feed_url, link_el.attributes["href"])
-            norm_url = self._normalize_url(raw_url)
-
-            if norm_url in events_dict:
-                target_event = events_dict[norm_url]
-
-                type_el = html_card.css_first(".event__item__category")
-                if type_el:
-                    target_event.event_type = type_el.text(strip=True).title()
-
-                genre_el = html_card.css_first(".event__item__types")
-                if genre_el:
-                    target_event.genre = genre_el.text(strip=True).title()
 
     @staticmethod
     def _normalize_url(url: str) -> str:
