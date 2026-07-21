@@ -5,6 +5,7 @@ from typing import Sequence
 import asyncpg
 
 from application.scraping.dto import EventCard
+from application.scraping.dto import EventCard
 
 logger = logging.getLogger(__name__)
 
@@ -57,3 +58,34 @@ class PostgresEventListingsRepository:
         except Exception as e:
             logger.error(f"Failed to upsert events: {e}")
             raise
+
+    async def get_unprocessed_events(self, source_id: str) -> list[EventCard]:
+        query = """
+        SELECT * FROM  event_listings 
+        WHERE detail_status = 'done'
+        AND status != 'normalized'
+        """
+        rows = await self._pool.fetch(query)
+        cards = []
+        for row in rows:
+            cards.append(EventCard(
+                external_event_id=row['external_event_id'],
+                source_event_url=row['source_event_url'],
+                title=row['title'],
+                event_start_at=row['event_start_at'],
+                event_end_at=row['event_end_at'],
+                city_text=row['city_text'],
+                location=row['location'],
+                genre=row['genre'],
+                event_type=row['event_type'],
+                cover_image_url=row['cover_image_url'],
+                price_min=row['price'],
+                price_currency=row['price_currency']
+            ))
+        return cards
+
+    async def mark_as_normalized(self, urls: list[str]) -> None:
+        if not urls:
+            return
+        query = "UPDATE event_listings SET status = 'normalized' WHERE source_event_url = ANY($1::text[])"
+        await self._pool.execute(query, urls)
