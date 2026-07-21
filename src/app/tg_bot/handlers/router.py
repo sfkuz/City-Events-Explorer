@@ -27,10 +27,7 @@ AVAILABLE_GENRES = [
     'festiwal muzyczny', 'blues/soul'
 ]
 AVAILABLE_TYPES = [
-    'koncerty', 'spektakle', 'kulinaria',
-    'imprezy rozrywkowe', 'imprezy okolicznościowe',
-    'wystawy, spotkania', 'sport, rekreacja',
-    'tragi, konferencje', 'film, kino'
+    'koncerty', 'imprezy rozrywkowe'
 ]
 
 mock_user_db: dict[int, dict] = {}
