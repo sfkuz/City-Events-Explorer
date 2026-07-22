@@ -1,5 +1,4 @@
 import logging
-from typing import Sequence
 
 from domain.events.entities import Event
 from infrastructure.repositories.postgres_event_repository import PostgresEventRepository

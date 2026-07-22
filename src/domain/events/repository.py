@@ -18,7 +18,7 @@ class IEventRepository(ABC):
         ...
 
     @abstractmethod
-    async def get_all(self) -> Iterable[Event]:
+    async def get_all(self, limit: int = 100) -> Sequence[Event]:
         ...
 
     @abstractmethod
