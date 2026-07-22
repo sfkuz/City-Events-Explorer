@@ -43,5 +43,18 @@ class IEventRepository(ABC):
             genres: list[str] = None,
             types: list[str] = None,
             date_from: datetime = None,
-            date_to: datetime = None) -> Sequence[Event]:
+            date_to: datetime = None,
+            limit: int = 1,
+            offset: int = 0
+    ) -> Sequence[Event]:
+        ...
+
+    @abstractmethod
+    async def count_search_events(
+            self,
+            genres: list[str] | None = None,
+            types: list[str] | None = None,
+            date_from: datetime | None = None,
+            date_to: datetime | None = None
+    ) -> int:
         ...
