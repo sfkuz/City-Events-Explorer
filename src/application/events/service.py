@@ -1,7 +1,7 @@
 from __future__ import annotations
 from uuid import UUID
 from typing import Sequence
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from domain.events.entities import Event
 from domain.events.repository import IEventRepository
@@ -38,5 +38,21 @@ class EventService:
             types: list[str] | None = None,
             date_from: datetime | None = None,
             date_to: datetime | None = None,
+            limit: int = 1,
+            offset: int = 0
             ) -> Sequence[Event]:
-        return await self._event_repository.search_events(genres=genres, types=types, date_from=date_from, date_to=date_to)
+        return await self._event_repository.search_events(
+            genres=genres, types=types, date_from=date_from, date_to=date_to, limit=limit, offset=offset
+        )
+
+
+    async def count_search_events(
+            self,
+            genres: list[str] | None = None,
+            types: list[str] | None = None,
+            date_from: datetime | None = None,
+            date_to: datetime | None = None
+            ) -> int:
+        return await self._event_repository.count_search_events(
+            genres=genres, types=types, date_from=date_from, date_to=date_to
+        )
