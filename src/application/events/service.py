@@ -28,9 +28,18 @@ class EventService:
             raise ValueError(f"Event {event_id} not found")
         return event
 
-    async def get_events_for_today(self) -> Sequence[Event]:
-        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0)
-        return await self._event_repository.get_by_start_at(today)
+    def _get_today_bounds(self) -> tuple[datetime, datetime]:
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today_start + timedelta(days=1, microseconds=-1)
+        return today_start, today_end
+
+    async def get_events_for_today(self, limit: int = 1, offset: int = 0) -> Sequence[Event]:
+        start, end = self._get_today_bounds()
+        return await self._event_repository.search_events(date_from=start, date_to=end, limit=limit, offset=offset)
+
+    async def count_events_for_today(self) -> int:
+        start, end = self._get_today_bounds()
+        return await self._event_repository.count_search_events(date_from=start, date_to=end)
 
     async def search_events(
             self,
