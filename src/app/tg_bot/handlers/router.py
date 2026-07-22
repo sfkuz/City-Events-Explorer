@@ -174,6 +174,11 @@ async def process_own_dates(message: Message, state: FSMContext):
         start_date = datetime.strptime(start_str, '%d.%m.%Y')
         end_date = datetime.strptime(end_str, '%d.%m.%Y')
 
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        if start_date < today:
+            await message.answer('You cannot search for events in the past. Please enter future dates')
+            return
+
         if end_date < start_date:
             await message.answer('The end date cannot be less than the start date. Try again! e.g. 04.10.2026 - 16.12.2026')
             return
@@ -292,5 +297,5 @@ async def paginate_events(callback: CallbackQuery, callback_data: EventPaginatio
                 await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
     except Exception as e:
         pass
-    
+
     await callback.answer()
