@@ -198,14 +198,16 @@ async def process_own_dates(message: Message, state: FSMContext):
 async def show_events_cmd(message: Message, state: FSMContext, event_service: EventService):
     await state.update_data(current_view='today')
 
-    events = await event_service.get_events_for_today()
+    total_count = await event_service.count_events_for_today()
 
-    if not events:
-        await message.answer("There are no events for today.")
+    if total_count == 0:
+        await message.answer("There are no events for today")
         return
 
+    events = await event_service.get_events_for_today(limit=1, offset=0)
+
     text, photo_url = render_event_card(events[0])
-    markup = get_event_pagination_keyboard(current_index=0, total_count=len(events))
+    markup = get_event_pagination_keyboard(current_index=0, total_count=total_count)
 
     if photo_url:
         await message.answer_photo(photo=photo_url, caption=text, reply_markup=markup, parse_mode='HTML')
@@ -218,28 +220,26 @@ async def execute_search(callback: CallbackQuery, state: FSMContext, event_servi
 
     genres = search_data.get('genres', [])
     types = search_data.get('types', [])
-
-    date_val = search_data.get('date_value')
-    custom_from = search_data.get('date_from')
-    custom_to = search_data.get('date_to')
-
-    date_from, date_to = resolve_dates(date_val, custom_from, custom_to)
-
-    events = await event_service.search_events(
-        genres=genres if genres else None,
-        types=types if types else None,
-        date_from=date_from,
-        date_to=date_to
+    date_from, date_to = resolve_dates(
+        search_data.get('date_value'), search_data.get('date_from', search_data.get('date_to'))
     )
 
-    if not events:
+    total_count = await event_service.count_search_events(
+        genres=genres or None, types=types or None, date_from=date_from, date_to=date_to
+    )
+
+    if total_count == 0:
         await callback.answer('Nothing found matching your filters 😔', show_alert=True)
         return
 
     await state.update_data(current_view='search')
 
+    events = await event_service.search_events(
+        genres=genres or None, types=types or None, date_from=date_from, date_to=date_to, limit=1, offset=0
+    )
+
     text, photo_url = render_event_card(events[0])
-    markup = get_event_pagination_keyboard(current_index=0, total_count=len(events))
+    markup = get_event_pagination_keyboard(current_index=0, total_count=total_count)
 
     if isinstance(callback.message, Message):
         await callback.message.delete()
@@ -254,42 +254,43 @@ async def paginate_events(callback: CallbackQuery, callback_data: EventPaginatio
     user_data = await state.get_data()
     current_view = user_data.get('current_view', 'today')
 
-    if current_view == 'search':
-        date_from, date_to = resolve_dates(
-            user_data.get('date_value'),
-            user_data.get('date_from'),
-            user_data.get('date_to')
-        )
-        events = await event_service.search_events(
-            genres=user_data.get('genres', []) or None,
-            types=user_data.get('types', []) or None,
-            date_from=date_from,
-            date_to=date_to
-        )
-    else:
-        events = await event_service.get_events_for_today()
-
-    if not events:
-        await callback.answer('Nothing found matching your filters.', show_alert=True)
-        return
-
     new_index = callback_data.current_index
     if callback_data.action == 'next':
         new_index += 1
     elif callback_data.action == 'prev':
         new_index -= 1
 
-    if new_index < 0 or new_index >= len(events):
-        await callback.answer('this is the end of the list', show_alert=True)
+    if current_view == 'search':
+        date_from, date_to = resolve_dates(
+            user_data.get('date_value'), user_data.get('date_from'), user_data.get('date_to')
+        )
+        total_count = await event_service.count_search_events(
+            genres=user_data.get('genres', []) or None, types=user_data.get('types', []) or None,
+            date_from=date_from, date_to=date_to
+        )
+        events = await event_service.search_events(
+            genres=user_data.get('genres', []) or None, types=user_data.get('types', []) or None,
+            date_from=date_from, date_to=date_to, limit=1, offset=0
+        )
+    else:
+        total_count = await event_service.count_events_for_today()
+        events = await event_service.get_events_for_today(limit=1, offset=new_index)
+
+    if not events or new_index < 0 or new_index >= total_count:
+        await callback.answer('This is the end of the list', show_alert=True)
         return
 
-    text, photo_url = render_event_card(events[new_index])
-    markup = get_event_pagination_keyboard(current_index=new_index, total_count=len(events))
+    text, photo_url = render_event_card(events[0])
+    markup = get_event_pagination_keyboard(current_index=new_index, total_count=total_count)
 
-    if isinstance(callback.message, Message):
-        await callback.message.delete()
-        if photo_url:
-            await callback.message.answer_photo(photo=photo_url, caption=text, reply_markup=markup, parse_mode='HTML')
-        else:
-            await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
+    try:
+        if isinstance(callback.message, Message):
+            await callback.message.delete()
+            if photo_url:
+                await callback.message.answer_photo(photo=photo_url, caption=text, reply_markup=markup, parse_mode='HTML')
+            else:
+                await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
+    except Exception as e:
+        pass
+    
     await callback.answer()
