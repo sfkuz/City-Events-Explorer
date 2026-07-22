@@ -89,7 +89,9 @@ class PostgresEventRepository(IEventRepository):
             genres: list[str] = None,
             types: list[str] = None,
             date_from: datetime = None,
-            date_to: datetime = None
+            date_to: datetime = None,
+            limit: int = 1,
+            offset: int = 0
     ) -> Sequence[Event]:
         query = "SELECT * FROM events WHERE 1=1"
         args = []
@@ -115,6 +117,41 @@ class PostgresEventRepository(IEventRepository):
             args.append(date_to)
             arg_idx += 1
 
-        query += "ORDER BY start_at ASC LIMIT 100"
+        query += f"ORDER BY start_at ASC LIMIT ${arg_idx} OFFSET {arg_idx+1 }"
+        args.extend([limit, offset])
         rows = await self._pool.fetch(query, *args)
         return [self._map_to_domain(row) for row in rows]
+
+    async def count_search_events(
+            self,
+            genres: list[str] | None = None,
+            types: list[str] | None = None,
+            date_from: datetime | None = None,
+            date_to: datetime | None = None
+    ) -> int:
+        query = "SELECT count(*) FROM events WHERE 1=1"
+        args = []
+        arg_idx = 1
+
+        if genres:
+            query += f'AND genre = ANY(${arg_idx}::text[])'
+            args.append(genres)
+            arg_idx += 1
+
+        if types:
+            query += f'AND event_type = ANY(${arg_idx}::text[])'
+            args.append(types)
+            arg_idx += 1
+
+        if date_from:
+            query += f'AND start_at >= ${arg_idx}'
+            args.append(date_from)
+            arg_idx += 1
+
+        if date_to:
+            query += f'AND start_at <= ${arg_idx}'
+            args.append(date_to)
+            arg_idx += 1
+
+        count = await self._pool.fetchval(query, *args)
+        return count
