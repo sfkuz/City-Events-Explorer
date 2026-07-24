@@ -1,10 +1,11 @@
 from aiogram import Router, F
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, InputMediaPhoto
 from aiogram.fsm.context import FSMContext
+from aiogram.exceptions import TelegramBadRequest
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.tg_bot.utils import resolve_dates
 from application.events.service import EventService
@@ -15,20 +16,11 @@ from app.tg_bot.handlers.views import (
     get_main_menu_text_and_kb, get_filter_menu_kb,
     get_search_setup_kb, get_dates_menu_kb
 )
+from domain.events.enum import AVAILABLE_GENRES, AVAILABLE_TYPES
 
 main_router = Router()
 
 logger = logging.getLogger(__name__)
-
-AVAILABLE_GENRES = [
-    'jazz', 'pop', 'rock/punk', 'muzyka poważna',
-    'muzyka elektroniczna', 'muzyka filmowa',
-    'muzyka alternatywna', 'hip-hop',
-    'festiwal muzyczny', 'blues/soul'
-]
-AVAILABLE_TYPES = [
-    'koncerty', 'imprezy rozrywkowe'
-]
 
 mock_user_db: dict[int, dict] = {}
 def get_user_prefs(user_id: int) -> dict:
@@ -171,10 +163,10 @@ async def process_own_dates(message: Message, state: FSMContext):
 
         start_str, end_str = parts
 
-        start_date = datetime.strptime(start_str, '%d.%m.%Y')
-        end_date = datetime.strptime(end_str, '%d.%m.%Y')
+        start_date = datetime.strptime(start_str, '%d.%m.%Y').replace(tzinfo=timezone.utc)
+        end_date = datetime.strptime(end_str, '%d.%m.%Y').replace(tzinfo=timezone.utc)
 
-        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         if start_date < today:
             await message.answer('You cannot search for events in the past. Please enter future dates')
             return
@@ -288,14 +280,30 @@ async def paginate_events(callback: CallbackQuery, callback_data: EventPaginatio
     text, photo_url = render_event_card(events[0])
     markup = get_event_pagination_keyboard(current_index=new_index, total_count=total_count)
 
+    message = callback.message
+    if not isinstance(message, Message):
+        await callback.answer("Error, message not available", show_alert=True)
+        return
+
     try:
-        if isinstance(callback.message, Message):
-            await callback.message.delete()
-            if photo_url:
-                await callback.message.answer_photo(photo=photo_url, caption=text, reply_markup=markup, parse_mode='HTML')
+        if photo_url:
+            if callback.message.photo:
+                media = InputMediaPhoto(media=photo_url, caption=text, parse_mode='HTML')
+                await callback.message.edit_media(media=media, reply_markup=markup)
             else:
+                await callback.message.delete()
+                await callback.message.answer_photo(photo=photo_url, caption=text, reply_markup=markup, parse_mode='HTML')
+        else:
+            if not callback.message.photo:
+                await callback.message.edit_text(text=text, reply_markup=markup, parse_mode='HTML')
+            else:
+                await callback.message.delete()
                 await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
+
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e).lower():
+            logger.error(f"TelegramBadRequest in pagination: {e}")
     except Exception as e:
-        pass
+        logger.exception(f"Unexpected error in pagination: {e}")
 
     await callback.answer()
