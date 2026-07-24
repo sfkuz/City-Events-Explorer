@@ -6,7 +6,12 @@ from domain.events.entities import Event
 from app.tg_bot.handlers.callbacks import EventPaginationCB, MenuCB, FilterCB, SearchActionCB
 
 def render_event_card(event: Event) -> tuple[str, str | None]:
-    price_text = f"{event.price} PLN" if event.price else "Bezpłatny"
+    if event.price == 0:
+        price_text = "free"
+    elif event.price is None:
+        price_text = "price is none"
+    else:
+        price_text = f"{event.price} PLN"
     date_text = event.start_at.strftime("%d.%m.%Y %H:%M")
 
     safe_title = html.escape(event.title)
