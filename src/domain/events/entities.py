@@ -18,15 +18,15 @@ class Event:
     cover_image_url: str | None = None
     price: int | None = None
 
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def __post_init__(self):
         if self.price is not None and self.price < 0:
             raise ValueError("Price cannot be negative")
         if self.end_at and self.end_at <= self.start_at:
             raise ValueError("End date must be after start date")
-        if not self.title.strip():
+        if not self.title or not str(self.title).strip():
             raise ValueError("Title cannot be empty")
 
     @property
