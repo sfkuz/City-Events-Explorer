@@ -1,11 +1,11 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import calendar
 
 def resolve_dates(date_value: str | None, custom_from: str | None = None, custom_to: str | None = None) -> tuple[datetime | None, datetime | None]:
     if not date_value:
         return None, None
 
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
 
     if date_value == 'this_weekend':
         days_ahead = 4 - now.weekday()
