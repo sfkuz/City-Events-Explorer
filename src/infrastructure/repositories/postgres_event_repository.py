@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Sequence
+from typing import Sequence, Any
 from uuid import UUID
 from datetime import datetime
 
@@ -11,7 +11,8 @@ class PostgresEventRepository(IEventRepository):
     def __init__(self, pool: asyncpg.Pool) -> None:
         self._pool = pool
 
-    def _map_to_domain(self, row: asyncpg.Record) -> Event:
+    @staticmethod
+    def _map_to_domain(row: asyncpg.Record) -> Event:
         return Event(
             id=row["id"],
             title=row["title"],
@@ -91,33 +92,32 @@ class PostgresEventRepository(IEventRepository):
             date_from: datetime = None,
             date_to: datetime = None,
             limit: int = 1,
-            offset: int = 0
-    ) -> Sequence[Event]:
+            offset: int = 0) -> Sequence[Event]:
         query = "SELECT * FROM events WHERE 1=1"
         args = []
         arg_idx = 1
 
         if genres:
-            query += f'AND genre = ANY(${arg_idx}::text[])'
+            query += f' AND genre = ANY(${arg_idx}::text[])'
             args.append(genres)
             arg_idx += 1
 
         if types:
-            query += f'AND event_type = ANY(${arg_idx}::text[])'
+            query += f' AND event_type = ANY(${arg_idx}::text[])'
             args.append(types)
             arg_idx += 1
 
         if date_from:
-            query += f'AND start_at >= ${arg_idx}'
+            query += f' AND start_at >= ${arg_idx}'
             args.append(date_from)
             arg_idx += 1
 
         if date_to:
-            query += f'AND start_at <= ${arg_idx}'
+            query += f' AND start_at <= ${arg_idx}'
             args.append(date_to)
             arg_idx += 1
 
-        query += f"ORDER BY start_at ASC LIMIT ${arg_idx} OFFSET {arg_idx+1 }"
+        query += f" ORDER BY start_at ASC LIMIT ${arg_idx} OFFSET ${arg_idx+1}"
         args.extend([limit, offset])
         rows = await self._pool.fetch(query, *args)
         return [self._map_to_domain(row) for row in rows]
@@ -127,29 +127,28 @@ class PostgresEventRepository(IEventRepository):
             genres: list[str] | None = None,
             types: list[str] | None = None,
             date_from: datetime | None = None,
-            date_to: datetime | None = None
-    ) -> int:
+            date_to: datetime | None = None) -> int:
         query = "SELECT count(*) FROM events WHERE 1=1"
         args = []
         arg_idx = 1
 
         if genres:
-            query += f'AND genre = ANY(${arg_idx}::text[])'
+            query += f' AND genre = ANY(${arg_idx}::text[])'
             args.append(genres)
             arg_idx += 1
 
         if types:
-            query += f'AND event_type = ANY(${arg_idx}::text[])'
+            query += f' AND event_type = ANY(${arg_idx}::text[])'
             args.append(types)
             arg_idx += 1
 
         if date_from:
-            query += f'AND start_at >= ${arg_idx}'
+            query += f' AND start_at >= ${arg_idx}'
             args.append(date_from)
             arg_idx += 1
 
         if date_to:
-            query += f'AND start_at <= ${arg_idx}'
+            query += f' AND start_at <= ${arg_idx}'
             args.append(date_to)
             arg_idx += 1
 

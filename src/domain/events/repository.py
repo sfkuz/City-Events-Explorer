@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import datetime
+from datetime import datetime
 from abc import ABC, abstractmethod
-from typing import Iterable, Sequence
+from typing import Sequence
 from uuid import UUID
 
 from domain.events.entities import Event
@@ -40,10 +40,10 @@ class IEventRepository(ABC):
     @abstractmethod
     async def search_events(
             self,
-            genres: list[str] = None,
-            types: list[str] = None,
-            date_from: datetime = None,
-            date_to: datetime = None,
+            genres: list[str] | None = None,
+            types: list[str] | None = None,
+            date_from: datetime | None = None,
+            date_to: datetime | None = None,
             limit: int = 1,
             offset: int = 0
     ) -> Sequence[Event]:

@@ -3,19 +3,9 @@ import logging
 from domain.events.entities import Event
 from infrastructure.repositories.postgres_event_repository import PostgresEventRepository
 from infrastructure.repositories.postgres_event_listings_repository import PostgresEventListingsRepository
+from domain.events.enum import AVAILABLE_GENRES, AVAILABLE_TYPES
 
 logger = logging.getLogger(__name__)
-
-ALLOWED_GENRES = {
-    'jazz', 'pop', 'rock/punk', 'muzyka poważna',
-    'muzyka elektroniczna', 'muzyka filmowa',
-    'muzyka alternatywna', 'hip-hop',
-    'festiwal muzyczny', 'blues/soul'
-}
-
-ALLOWED_TYPES = {
-    'koncerty', 'imprezy rozrywkowe'
-}
 
 class NormalizationService:
     def __init__(self,
@@ -36,16 +26,15 @@ class NormalizationService:
         valid_events_count = 0
 
         for card in raw_events:
-            processed_urls.append(card.source_event_url)
-
-            genre = card.genre.lower() if card.genre else ""
-            event_type = card.event_type.lower() if card.event_type else ""
+            genre = str(card.genre).lower() if card.genre else ""
+            event_type = str(card.event_type).lower() if card.event_type else ""
 
             if not genre or not event_type:
+                processed_urls.append(card.source_event_url)
                 continue
 
-            is_valid_genre = genre in ALLOWED_GENRES
-            is_valid_type = event_type in ALLOWED_TYPES
+            is_valid_genre = genre in AVAILABLE_GENRES
+            is_valid_type = event_type in AVAILABLE_TYPES
 
             if is_valid_genre or is_valid_type:
                 domain_event = Event(
@@ -64,8 +53,12 @@ class NormalizationService:
                 try:
                     await self._event_repo.add(domain_event)
                     valid_events_count += 1
+                    processed_urls.append(card.source_event_url)
                 except Exception as e:
-                    logger.error(f'Failed to save normalized event {card.source_event_url}:  {e}')
+                    logger.error(f'Failed to save normalized event {card.source_event_url}: {e}')
+            else:
+                processed_urls.append(card.source_event_url)
+
         if processed_urls:
             await self._listings_repo.mark_as_normalized(processed_urls)
 
