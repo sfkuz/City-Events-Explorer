@@ -22,7 +22,8 @@ class StaticFetcher(IFetcher):
         if headers:
             req_headers.update(headers)
 
-        logger.info(f"Fetching URL: {url} | UA: {req_headers['User-Agent']}")
+        logger.info(f"Fetching URL: {url}")
+        logger.debug(f"Request headers for {url}: {req_headers}")
 
         async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
             response = await client.get(url, headers=req_headers)

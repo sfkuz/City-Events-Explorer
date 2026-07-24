@@ -23,7 +23,6 @@ async def create_db_pool(settings: Settings) -> Pool:
         max_size=settings.db_pool_max_size,
         command_timeout=settings.db_connect_timeout_seconds,
     )
-    # проверка связи
     async with pool.acquire() as conn:
         await conn.execute("SELECT 1")
 
