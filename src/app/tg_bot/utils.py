@@ -11,7 +11,7 @@ def resolve_dates(date_value: str | None, custom_from: str | None = None, custom
         days_ahead = 4 - now.weekday()
         if days_ahead < 0:
             days_ahead += 7
-        start = now - timedelta(days=days_ahead)
+        start = now + timedelta(days=days_ahead)
         start = start.replace(hour=0, minute=0, second=0, microsecond=0)
         end = start + timedelta(days=2, hours=23, minutes=59, seconds=59, microseconds=59)
         return start, end
