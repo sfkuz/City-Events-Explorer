@@ -44,7 +44,7 @@ class NormalizationService:
                     event_type=event_type,
                     start_at=card.event_start_at,
                     end_at=card.event_end_at,
-                    organizer_name="Trojmisto.pl" if not card.source_organizer_name else card.source_organizer_name,
+                    organizer_name="Trojmiasto.pl" if not card.source_organizer_name else card.source_organizer_name,
                     url=card.source_event_url,
                     cover_image_url=card.cover_image_url,
                     price=card.price_min
@@ -53,9 +53,10 @@ class NormalizationService:
                 try:
                     await self._event_repo.add(domain_event)
                     valid_events_count += 1
-                    processed_urls.append(card.source_event_url)
                 except Exception as e:
                     logger.error(f'Failed to save normalized event {card.source_event_url}: {e}')
+                finally:
+                    processed_urls.append(card.source_event_url)
             else:
                 processed_urls.append(card.source_event_url)
 
