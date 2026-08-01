@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo
 
 @dataclass(slots=True, kw_only=True)
 class Event:
@@ -18,8 +19,8 @@ class Event:
     cover_image_url: str | None = None
     price: int | None = None
 
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(ZoneInfo("Europe/Warsaw")))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(ZoneInfo("Europe/Warsaw")))
 
     def __post_init__(self):
         if self.price is not None and self.price < 0:
@@ -35,4 +36,4 @@ class Event:
 
     @property
     def is_finished(self) -> bool:
-        return datetime.now(timezone.utc) > self.start_at
+        return datetime.now(ZoneInfo("Europe/Warsaw")) > self.start_at

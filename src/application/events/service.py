@@ -2,6 +2,7 @@ from __future__ import annotations
 from uuid import UUID
 from typing import Sequence
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 
 from domain.events.entities import Event
 from domain.events.repository import IEventRepository
@@ -29,7 +30,8 @@ class EventService:
         return event
 
     def _get_today_bounds(self) -> tuple[datetime, datetime]:
-        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        tz = ZoneInfo("Europe/Warsaw")
+        today_start = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
         today_end = today_start + timedelta(days=1, microseconds=-1)
         return today_start, today_end
 
