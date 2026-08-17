@@ -65,6 +65,7 @@ async def bootstrap_application(settings: Settings,stack: AsyncExitStack) -> App
     stack.callback(cron_service.stop)
 
     bot = Bot(token=settings.tg_bot_token)
+    stack.push_async_callback(bot.session.close)
 
     dp = Dispatcher()
     dp["event_service"] = event_service
