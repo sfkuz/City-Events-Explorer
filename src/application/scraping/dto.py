@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 
 @dataclass(slots=True, kw_only=True)
@@ -30,3 +31,10 @@ class EventCard:
     metadata_json: dict[str, Any] = field(default_factory=dict)
 
     detail_complete: bool = False
+
+@dataclass(slots=True, kw_only=True)
+class PendingDetailEvent:
+    listing_id: UUID
+    source_code: str
+    source_event_url: str
+    detail_attempts: int
