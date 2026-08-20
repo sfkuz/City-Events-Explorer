@@ -2,9 +2,10 @@ from logging import getLogger
 import asyncio
 import sys
 
+from app import runtime
 from infrastructure.config import load_settings
 from infrastructure.logging import configure_logging
-from app.runtime import run
+
 
 logger = getLogger(__name__)
 
@@ -14,7 +15,7 @@ def main() -> None:
     logger.info(f"Starting {settings.app_name} in {settings.app_env} environment...")
 
     try:
-        asyncio.run(run(settings))
+        asyncio.run(runtime.run(settings))
     except KeyboardInterrupt:
         logger.info("Process interrupted by user (KeyboardInterrupt). Exiting gracefully.")
         sys.exit(0)
