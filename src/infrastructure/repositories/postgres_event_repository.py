@@ -62,7 +62,7 @@ class PostgresEventRepository(IEventRepository):
         return self._map_to_domain(row)
 
     async def get_all(self, limit: int = 100) -> Sequence[Event]:
-        query = "SELECT * FROM events ORDER BY start_at DESC"
+        query = "SELECT * FROM events ORDER BY start_at DESC LIMIT $1"
         rows = await self._pool.fetch(query, limit)
         return [self._map_to_domain(row) for row in rows]
 
