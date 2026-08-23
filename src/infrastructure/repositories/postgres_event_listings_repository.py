@@ -3,9 +3,11 @@ import logging
 import json
 from typing import Sequence
 import asyncpg
+from uuid import UUID
+from datetime import datetime
 
-from application.scraping.dto import EventCard
-from application.scraping.dto import EventCard
+
+from application.scraping.dto import EventCard, PendingDetailEvent
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +61,7 @@ class PostgresEventListingsRepository:
             logger.error(f"Failed to upsert events: {e}")
             raise
 
-    async def get_unprocessed_events(self, source_id: str) -> list[EventCard]:
+    async def get_unprocessed_events(self) -> list[EventCard]:
         query = """
         SELECT * FROM  event_listings 
         WHERE detail_status = 'done'
