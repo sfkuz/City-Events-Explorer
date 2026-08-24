@@ -61,7 +61,7 @@ async def bootstrap_application(settings: Settings,stack: AsyncExitStack) -> App
         normalization_service = normalization_service
     )
 
-    cron_service = CronService(scraper_service)
+    cron_service = CronService(scraper_service, settings)
     stack.callback(cron_service.stop)
 
     bot = Bot(token=settings.tg_bot_token)

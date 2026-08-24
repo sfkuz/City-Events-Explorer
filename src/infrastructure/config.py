@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     db_pool_max_size: int = 10
     db_connect_timeout_seconds: float = 5.0
 
+    scraping_interval_seconds: int = 14400
+
 
 @lru_cache(maxsize=1)
 def load_settings() -> Settings:
