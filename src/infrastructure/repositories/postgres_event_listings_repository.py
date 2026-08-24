@@ -7,7 +7,7 @@ from uuid import UUID
 from datetime import datetime
 
 
-from application.scraping.dto import EventCard, PendingDetailEvent
+from application.scraping.dto import EventCard, PendingDetailEvent, EventDetails
 
 logger = logging.getLogger(__name__)
 
@@ -91,3 +91,49 @@ class PostgresEventListingsRepository:
             return
         query = "UPDATE event_listings SET status = 'normalized' WHERE source_event_url = ANY($1::text[])"
         await self._pool.execute(query, urls)
+
+    async def get_events_for_details(self, limit: int = 50) -> list[PendingDetailEvent]:
+        query = """
+            SELECT el.id, el.source_event_url, el.detail_attempts, s.code as source_code
+            FROM event_listings el
+            JOIN sources s ON el.source_id = s.id
+            WHERE el.status = 'active'
+                AND el.detail_status IN ('pending', 'failed')
+                AND (el.next_detail_retry_at IS NULL OR el.next_detail_retry_at <= NOW())
+            ORDER BY el.first_seen_at ASC
+            LIMIT $1
+        """
+        rows = await self._pool.fetch(query, limit)
+        return [PendingDetailEvent(
+            listing_id=row['id'],
+            source_code=row['source_code'],
+            source_event_url=row['source_event_url'],
+            detail_attempts=row['detail_attempts'],
+        ) for row in rows]
+
+    async def mark_detail_success(self, listing_id: UUID, details: EventDetails) -> None:
+        query = """
+            UPDATE event_listings
+            SET detail_status = 'done',
+                description_text = COALESCE($2, description_text),
+                description_html = COALESCE($3, description_html),
+                price = COALESCE($4, price),
+                detail_fetched_at = NOW(),
+                last_error = NULL
+            WHERE id = $1
+        """
+        await self._pool.execute(query, listing_id, details.description_text, details.description_html, details.price)
+        logger.debug(f"Details successfully saved for listing {listing_id}")
+
+    async def mark_detail_failed(self, listing_id: UUID, error_msg: str, attempts: int, next_retry: datetime, status: str) -> None:
+        query = """
+            UPDATE event_listings
+            SET detail_status = $2',
+                detail_attempts = $3,
+                last_error = $4,
+                last_error_at = NOW(),
+                next_detail_retry_at = $5
+            WHERE id = $1
+        """
+        await self._pool.execute(query, listing_id, status, attempts, error_msg, next_retry)
+        logger.warning(f"Detail fetch failed for listing {listing_id}. Status: {status}, Next retry: {next_retry}")
