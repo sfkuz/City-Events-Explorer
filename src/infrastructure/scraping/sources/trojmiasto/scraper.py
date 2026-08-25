@@ -63,9 +63,12 @@ class TrojmiastoScraper(ISourceScraper):
                     elif isinstance(raw_offers, list) and len(raw_offers) > 0 and isinstance(raw_offers[0], dict):
                         price_val = raw_offers[0].get("price")
 
+                    parsed_price = None
                     if isinstance(price_val, str):
                         match = re.search(r'\d+(\.\d+)?', price_val.replace(',', '.'))
                         parsed_price = int(float(match.group(0))) if match else None
+                    elif isinstance(price_val, (int, float)):
+                        parsed_price = int(price_val)
 
                     loc = item.get("location")
                     city_text = None

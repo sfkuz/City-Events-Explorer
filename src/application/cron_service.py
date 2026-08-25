@@ -36,4 +36,6 @@ class CronService:
         logger.info('CronService started')
 
     def stop(self):
-        self._scheduler.shutdown()
+        if self._scheduler.running:
+            self._scheduler.shutdown()
+            logger.info('CronService stopped')
