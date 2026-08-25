@@ -86,11 +86,16 @@ class PostgresEventListingsRepository:
             ))
         return cards
 
-    async def mark_as_normalized(self, urls: list[str]) -> None:
-        if not urls:
+    async def mark_as_normalized(self, normalized_data: list[tuple[str, UUID]]) -> None:
+        if not normalized_data:
             return
-        query = "UPDATE event_listings SET status = 'normalized' WHERE source_event_url = ANY($1::text[])"
-        await self._pool.execute(query, urls)
+        query = """
+                UPDATE event_listings
+                SET status = 'normalized',
+                    canonical_event_id = $2
+                WHERE source_event_url = $1
+                """
+        await self._pool.executemany(query, normalized_data)
 
     async def get_events_for_details(self, limit: int = 50) -> list[PendingDetailEvent]:
         query = """

@@ -10,7 +10,7 @@ from domain.events.entities import Event
 class IEventRepository(ABC):
 
     @abstractmethod
-    async def add(self, event: Event) -> None:
+    async def add(self, event: Event) -> UUID:
         ...
 
     @abstractmethod

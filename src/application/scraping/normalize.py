@@ -22,7 +22,7 @@ class NormalizationService:
             logger.info('No unprocessed events found')
             return
 
-        processed_urls = []
+        processed_data = []
         valid_events_count = 0
 
         for card in raw_events:
@@ -30,7 +30,6 @@ class NormalizationService:
             event_type = str(card.event_type).lower() if card.event_type else ""
 
             if not genre or not event_type:
-                processed_urls.append(card.source_event_url)
                 continue
 
             is_valid_genre = genre in AVAILABLE_GENRES
@@ -44,23 +43,21 @@ class NormalizationService:
                     event_type=event_type,
                     start_at=card.event_start_at,
                     end_at=card.event_end_at,
-                    organizer_name="Trojmiasto.pl" if not card.source_organizer_name else card.source_organizer_name,
+                    organizer_name="Trojmisto.pl" if not card.source_organizer_name else card.source_organizer_name,
                     url=card.source_event_url,
                     cover_image_url=card.cover_image_url,
                     price=card.price_min
                 )
 
                 try:
-                    await self._event_repo.add(domain_event)
+                    event_id = await self._event_repo.add(domain_event)
                     valid_events_count += 1
+
+                    processed_data.append((card.source_event_url, event_id))
                 except Exception as e:
                     logger.error(f'Failed to save normalized event {card.source_event_url}: {e}')
-                finally:
-                    processed_urls.append(card.source_event_url)
-            else:
-                processed_urls.append(card.source_event_url)
 
-        if processed_urls:
-            await self._listings_repo.mark_as_normalized(processed_urls)
+        if processed_data:
+            await self._listings_repo.mark_as_normalized(processed_data)
 
         logger.info(f'Normalization finished. Saved {valid_events_count} events')

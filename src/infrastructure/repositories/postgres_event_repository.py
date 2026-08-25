@@ -44,14 +44,16 @@ class PostgresEventRepository(IEventRepository):
                 price = EXCLUDED.price,
                 cover_image_url = EXCLUDED.cover_image_url,
                 updated_at = NOW()
+            RETURNING id
         """
-        await self._pool.execute(
+        row = await self._pool.fetchrow(
             query,
             event.id, event.title, event.location,
             event.genre, event.event_type, event.start_at, event.end_at,
             event.organizer_name, event.url, event.cover_image_url,
             event.price, event.created_at, event.updated_at
         )
+        return row["id"]
 
     async def get_by_id(self, event_id: UUID) -> Event:
         query = "SELECT * FROM events WHERE id = $1"
