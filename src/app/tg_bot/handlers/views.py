@@ -72,9 +72,9 @@ def get_main_menu_text_and_kb(user_prefs: dict) -> tuple[str, InlineKeyboardMark
     return text, builder.as_markup()
 
 def get_search_setup_kb(search_data: dict) -> tuple[str, InlineKeyboardMarkup]:
-    genres = ", ".join(search_data.get("genres", [])) or "Any"
-    types = ", ".join(search_data.get("types", [])) or "Any"
-    date = search_data.get("date_str", "Any Time")
+    genres = ", ".join(search_data.get("genres", [])) or "None"
+    types = ", ".join(search_data.get("types", [])) or "None"
+    date = search_data.get("date_str", "None")
 
     text = (
         f"🔎 <b>Find Events</b>\n\n"
