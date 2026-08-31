@@ -282,7 +282,7 @@ async def paginate_events(callback: CallbackQuery, callback_data: EventPaginatio
         )
         events = await event_service.search_events(
             genres=user_data.get('genres', []) or None, types=user_data.get('types', []) or None,
-            date_from=date_from, date_to=date_to, limit=1, offset=0
+            date_from=date_from, date_to=date_to, limit=1, offset=new_index
         )
     else:
         total_count = await event_service.count_events_for_today()
