@@ -1,7 +1,8 @@
 import json
 import logging
+import asyncio
 from datetime import datetime
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse, urljoin, quote
 import re
 
 from selectolax.parser import HTMLParser
@@ -16,15 +17,57 @@ class TrojmiastoScraper(ISourceScraper):
         self._fetcher = fetcher
 
     async def discover_events(self, feed_url: str) -> list[EventCard]:
+        all_events_dict = {}
+
+        logger.info(f"Scraping main page: {feed_url}")
         html = await self._fetcher.fetch_html(feed_url)
         tree = HTMLParser(html)
 
         events_dict = self._extract_events_from_json(tree)
-        logger.debug(f"Extracted {len(events_dict)} valid events from JSON-LD")
+        logger.debug(f"Extracted {len(events_dict)} valid events from main page")
 
         self._enrich_events_from_html(tree, feed_url, events_dict)
+        all_events_dict.update(events_dict)
 
-        return list(events_dict.values())
+        max_scrolls = 5
+        offset = 20
+
+        encoded_path = quote(feed_url, safe='')
+
+        for i in range(max_scrolls):
+            await asyncio.sleep(2)
+            ajax_url = f"https://www.trojmiasto.pl/_ajax/imprezy__list_loader/?path={encoded_path}&offset={offset}&archiveMode=0&firstEntry=0&noService=1&mode=append"
+            logger.info(f"Scraping AJAX scroll (offset {offset})...")
+
+            try:
+                ajax_response = await self._fetcher.fetch_html(ajax_url)
+
+                try:
+                    data = json.loads(ajax_response)
+                    if isinstance(data, dict) and "html" in data:
+                        ajax_response = data["html"]
+                except json.JSONDecodeError:
+                    pass
+
+                ajax_tree = HTMLParser(ajax_response)
+                ajax_events_dict = self._extract_events_from_json(ajax_tree)
+
+                if not ajax_events_dict:
+                    if not ajax_tree.css(".event__item__container"):
+                        logger.info("Reached the end of the events list. Stopping scroll.")
+                        break
+                    else:
+                        logger.warning(f"Cards found but no JSON-LD data at offset {offset}.")
+
+                self._enrich_events_from_html(ajax_tree, feed_url, ajax_events_dict)
+                all_events_dict.update(ajax_events_dict)
+                offset += 20
+
+            except Exception as e:
+                logger.error(f"Error fetching offset {offset}: {e}", exc_info=True)
+            break
+
+        return list(all_events_dict.values())
 
     async def scrape_event_details(self, event_url: str) -> EventDetails:
         return EventDetails()
@@ -57,18 +100,23 @@ class TrojmiastoScraper(ISourceScraper):
                     norm_url = self._normalize_url(event_url)
 
                     raw_offers = item.get("offers")
-                    price_val = None
-                    if isinstance(raw_offers, dict):
-                        price_val = raw_offers.get("price")
-                    elif isinstance(raw_offers, list) and len(raw_offers) > 0 and isinstance(raw_offers[0], dict):
-                        price_val = raw_offers[0].get("price")
-
                     parsed_price = None
-                    if isinstance(price_val, str):
-                        match = re.search(r'\d+(\.\d+)?', price_val.replace(',', '.'))
-                        parsed_price = int(float(match.group(0))) if match else None
-                    elif isinstance(price_val, (int, float)):
-                        parsed_price = int(price_val)
+
+                    offers_list = raw_offers if isinstance(raw_offers, list) else [raw_offers] if raw_offers else []
+
+                    prices = []
+                    for offer in offers_list:
+                        if isinstance(offer, dict) and "price" in offer:
+                            p = offer.get("price")
+                            if isinstance(p, (int, float)):
+                                prices.append(int(p))
+                            elif isinstance(p, str):
+                                match = re.search(r'\d+(\.\d+)?', p.replace(',', '.'))
+                                if match:
+                                    prices.append(int(float(match.group(0))))
+
+                    if prices:
+                        parsed_price = min(prices)
 
                     loc = item.get("location")
                     city_text = None
