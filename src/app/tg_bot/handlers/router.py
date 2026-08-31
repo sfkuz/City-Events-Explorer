@@ -42,8 +42,14 @@ async def go_home(callback: CallbackQuery, state: FSMContext):
     text, markup = get_main_menu_text_and_kb(prefs)
 
     if isinstance(callback.message, Message):
-        await callback.message.delete()
-        await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
+        try:
+            if callback.message.photo:
+                await callback.message.delete()
+                await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
+            else:
+                await callback.message.edit_text(text=text, reply_markup=markup, parse_mode='HTML')
+        except TelegramBadRequest as e:
+            logger.warning(f"Ignored Telegram error in go_home: {e}")
     await callback.answer()
 
 @main_router.callback_query(SearchActionCB.filter(F.action == 'setup'))
@@ -53,8 +59,14 @@ async def setup_search(callback: CallbackQuery, state: FSMContext):
     text, markup = get_search_setup_kb(search_data)
 
     if isinstance(callback.message, Message):
-        await callback.message.delete()
-        await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
+        try:
+            if callback.message.photo:
+                await callback.message.delete()
+                await callback.message.answer(text=text, reply_markup=markup, parse_mode='HTML')
+            else:
+                await callback.message.edit_text(text=text, reply_markup=markup, parse_mode='HTML')
+        except TelegramBadRequest as e:
+            logger.warning(f"Ignored Telegram error in go_home: {e}")
     await callback.answer()
 
 @main_router.callback_query(MenuCB.filter(F.screen.in_(['genres', 'types'])))
@@ -239,7 +251,10 @@ async def execute_search(callback: CallbackQuery, state: FSMContext, event_servi
     markup = get_event_pagination_keyboard(current_index=0, total_count=total_count)
 
     if isinstance(callback.message, Message):
-        await callback.message.delete()
+        try:
+            await callback.message.delete()
+        except TelegramBadRequest:
+            pass
         if photo_url:
             await callback.message.answer_photo(photo=photo_url, caption=text, reply_markup=markup, parse_mode='HTML')
         else:
