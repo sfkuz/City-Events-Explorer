@@ -49,11 +49,15 @@ def get_event_pagination_keyboard(current_index: int, total_count: int) -> Inlin
 
 def get_main_menu_text_and_kb(user_prefs: dict) -> tuple[str, InlineKeyboardMarkup]:
     notify_icon = '✅' if user_prefs.get('notify') else '❌'
+    genres = ", ".join(user_prefs.get('genres', [])) or "None"
+    types = ", ".join(user_prefs.get('types', [])) or "None"
 
     text = (
         f"<b> Menu </b>\n\n"
         f"🔔 Notifications: {notify_icon}\n"
-        f"<i> Configure your filters to receive automatic alerts </i>\n"
+        f"Chosen genres: {genres}\n"
+        f"Chosen event types: {types}\n"
+        f"\n<i> Configure your filters to receive automatic alerts </i>\n"
     )
 
     builder = InlineKeyboardBuilder()
