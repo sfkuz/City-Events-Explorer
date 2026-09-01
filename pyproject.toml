@@ -1,0 +1,26 @@
+[project]
+name = "city-events-explorer"
+version = "0.1.0"
+description = "This app (Telegram bot) was created to track events in your city. Currently, it only serves Gdansk."
+authors = [
+    {name = "Sofiia Kuzmenko",email = "kuzmenkosofi@gmail.com"}
+]
+requires-python = ">=3.11,<3.15"
+dependencies = [
+    "aiogram (>=3.31.0,<4.0.0)",
+    "asyncpg (>=0.31.0,<0.32.0)",
+    "yoyo-migrations (>=9.0.0,<10.0.0)",
+    "pydantic (>=2.13.5,<3.0.0)",
+    "pydantic-settings (>=2.15.0,<3.0.0)",
+    "apscheduler (>=3.11.3,<4.0.0)",
+    "httpx (>=0.28.1,<0.29.0)",
+    "fake-useragent (>=2.2.0,<3.0.0)",
+    "tenacity (>=9.1.4,<10.0.0)",
+    "selectolax (>=0.4.11,<0.5.0)",
+    "python-dotenv (>=1.2.3,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
