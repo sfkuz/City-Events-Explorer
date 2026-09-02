@@ -2,9 +2,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from encodings.iso8859_4 import decoding_table
-
-from fastapi_cloud_cli.utils.api import attempts
 
 from infrastructure.scraping.registry import ScraperRegistry
 from infrastructure.repositories.postgres_feed_repository import PostgresFeedRepository
