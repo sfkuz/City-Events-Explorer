@@ -1,7 +1,7 @@
 from __future__ import annotations
 from uuid import UUID
 from typing import Sequence
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from domain.events.entities import Event
