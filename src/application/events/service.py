@@ -52,6 +52,10 @@ class EventService:
             limit: int = 1,
             offset: int = 0
             ) -> Sequence[Event]:
+
+        if date_from is None:
+            date_from, _ = self._get_today_bounds()
+
         return await self._event_repository.search_events(
             genres=genres, types=types, date_from=date_from, date_to=date_to, limit=limit, offset=offset
         )
@@ -64,6 +68,10 @@ class EventService:
             date_from: datetime | None = None,
             date_to: datetime | None = None
             ) -> int:
+
+        if date_from is None:
+            date_from, _ = self._get_today_bounds()
+
         return await self._event_repository.count_search_events(
             genres=genres, types=types, date_from=date_from, date_to=date_to
         )

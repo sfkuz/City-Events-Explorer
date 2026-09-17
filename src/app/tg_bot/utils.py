@@ -8,25 +8,29 @@ def resolve_dates(date_value: str | None, custom_from: str | None = None, custom
 
     tz = ZoneInfo("Europe/Warsaw")
     now = datetime.now(tz)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
     if date_value == 'this_weekend':
-        days_ahead = 4 - now.weekday()
-        if days_ahead < 0:
-            days_ahead += 7
-        start = now + timedelta(days=days_ahead)
-        start = start.replace(hour=0, minute=0, second=0, microsecond=0)
-        end = start + timedelta(days=2, hours=23, minutes=59, seconds=59, microseconds=59)
+        weekday = now.weekday()
+        if weekday >= 5:
+            start = today_start
+            days_to_sunday = 6 - weekday
+            end = today_start + timedelta(days=days_to_sunday, hours=23, minutes=59, seconds=59)
+        else:
+            days_to_friday = 4 - weekday
+            start = today_start + timedelta(days=days_to_friday)
+            end = start + timedelta(days=2, hours=23, minutes=59, seconds=59)
         return start, end
 
     elif date_value == "next_weekend":
-        days_ahead = 4 - now.weekday() + 7
-        start = now + timedelta(days=days_ahead)
-        start = start.replace(hour=0, minute=0, second=0, microsecond=0)
+        weekday = now.weekday()
+        days_to_next_friday = 4 - weekday +7
+        start = today_start + timedelta(days=days_to_next_friday)
         end = start + timedelta(days=2, hours=23, minutes=59, seconds=59)
         return start, end
 
     elif date_value == "this_month":
-        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        start = today_start
         last_day = calendar.monthrange(now.year, now.month)[1]
         end = now.replace(day=last_day, hour=23, minute=59, second=59, microsecond=0)
         return start, end
