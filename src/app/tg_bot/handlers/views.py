@@ -1,4 +1,5 @@
 import html
+from zoneinfo import ZoneInfo
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -12,7 +13,10 @@ def render_event_card(event: Event) -> tuple[str, str | None]:
         price_text = "price is none"
     else:
         price_text = f"{event.price} PLN"
-    date_text = event.start_at.strftime("%d.%m.%Y %H:%M")
+
+    tz = ZoneInfo("Europe/Warsaw")
+    local_start_at = event.start_at.astimezone(tz) if event.start_at.tzinfo else event.start_at.replace(tzinfo=tz)
+    date_text = local_start_at.strftime("%d.%m.%Y %H:%M")
 
     safe_title = html.escape(event.title)
     safe_location = html.escape(event.location or 'not specified')

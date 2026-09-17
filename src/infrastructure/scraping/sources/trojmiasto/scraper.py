@@ -273,7 +273,13 @@ class TrojmiastoScraper(ISourceScraper):
             return None
         try:
             clean_str = dt_str.replace("Z", "+00:00")
-            return datetime.fromisoformat(clean_str)
+            dt = datetime.fromisoformat(clean_str)
+
+            if dt.tzinfo is None:
+                from zoneinfo import ZoneInfo
+                dt = dt.replace(tzinfo=ZoneInfo("Europe/Warsaw"))
+
+            return dt
         except ValueError:
             logger.warning(f"Could not parse datetime: {dt_str}")
             return None
