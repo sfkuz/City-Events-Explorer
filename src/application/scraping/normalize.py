@@ -43,7 +43,7 @@ class NormalizationService:
                     event_type=event_type,
                     start_at=card.event_start_at,
                     end_at=card.event_end_at,
-                    organizer_name="Trojmisto.pl" if not card.source_organizer_name else card.source_organizer_name,
+                    organizer_name=card.source_organizer_name or "unknown",
                     url=card.source_event_url,
                     cover_image_url=card.cover_image_url,
                     price=card.price_min
