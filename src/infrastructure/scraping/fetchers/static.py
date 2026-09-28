@@ -1,6 +1,7 @@
 import httpx
 import logging
 import random
+from typing import Any
 from application.scraping.ports import IFetcher
 from application.scraping.retry import with_retry
 
@@ -35,3 +36,18 @@ class StaticFetcher(IFetcher):
             response = await client.get(url, headers=req_headers)
             response.raise_for_status()
             return response.text
+
+    @with_retry()
+    async def post_json(self, url: str, json_payload: dict, headers: dict | None = None) -> dict[str, Any]:
+        req_headers = {
+            "User-Agent": random.choice(USER_AGENTS),
+            "Accept": "application/json",
+        }
+        if headers:
+            req_headers.update(headers)
+        logger.info(f"Posting JSON to URL: {url}")
+
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(url, json=json_payload, headers=req_headers)
+            response.raise_for_status()
+            return response.json()
