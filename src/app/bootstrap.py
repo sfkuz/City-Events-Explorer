@@ -14,6 +14,7 @@ from infrastructure.repositories.postgres_event_repository import PostgresEventR
 from infrastructure.repositories.postgres_event_listings_repository import PostgresEventListingsRepository
 
 from infrastructure.scraping.sources.trojmiasto.scraper import TrojmiastoScraper
+from infrastructure.scraping.sources.going.scraper import GoingScraper
 from infrastructure.scraping.fetchers.static import StaticFetcher
 from infrastructure.scraping.registry import ScraperRegistry
 
@@ -47,9 +48,11 @@ async def bootstrap_application(settings: Settings,stack: AsyncExitStack) -> App
 
     fetcher = StaticFetcher()
     trojmiasto_scraper = TrojmiastoScraper(fetcher)
+    going_scraper = GoingScraper(fetcher)
 
     registry = ScraperRegistry()
     registry.register("trojmiasto", trojmiasto_scraper)
+    registry.register("going", going_scraper)
 
     event_service = EventService(event_repo)
     normalization_service = NormalizationService(listings_repo, event_repo)
