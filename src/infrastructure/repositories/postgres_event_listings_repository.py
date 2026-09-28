@@ -133,7 +133,7 @@ class PostgresEventListingsRepository:
     async def mark_detail_failed(self, listing_id: UUID, error_msg: str, attempts: int, next_retry: datetime, status: str) -> None:
         query = """
             UPDATE event_listings
-            SET detail_status = $2',
+            SET detail_status = $2,
                 detail_attempts = $3,
                 last_error = $4,
                 last_error_at = NOW(),
