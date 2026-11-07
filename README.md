@@ -57,8 +57,8 @@ poetry run python src/main.py
 ## 🛠 Makefile Commands Cheat Sheet
 We use a Makefile to simplify common operations. Here are the available commands:
 Command	Description
-* make up	- Builds and starts all Docker containers (docker-compose up -d --build).
-* make down - Stops and removes Docker containers (docker-compose down).
+* make up - Applies all pending migrations to the database
+* make down - Rolls back the latest applied migration.
 * make status - Check the status of migrations
 * make create - Create a new migration (example: make create name=add_users_table)
 
