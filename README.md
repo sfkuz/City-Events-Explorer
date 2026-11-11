@@ -9,7 +9,9 @@ At the moment, only basic functionality has been implemented, namely:
 
 In the future, it will also be possible to subscribe to genres and types in order to receive notifications about events.
 
-![img.png](img.png)
+<p align="center">
+  <img src="docs/architecture.png" alt="System Architecture" width="800">
+</p>
 
 ## ⚙️ Prerequisites
 
