@@ -1,6 +1,16 @@
 ### City Event Explorer
 A Telegram Bot and Web Scraper that aggregates local events from multiple sources, normalizes the data, and allows users to search, filter, and get notified about upcoming events.
 
+This project was created to make it easier to find events for the weekend, as well as events within your favorite genres.
+
+At the moment, only basic functionality has been implemented, namely:
+- search by various parameters (genre, type)
+- search by dates (weekend, next weekend, this week, custom dates)
+
+In the future, it will also be possible to subscribe to genres and types in order to receive notifications about events.
+
+![img.png](img.png)
+
 ## ⚙️ Prerequisites
 
 Before you begin, ensure you have the following installed on your machine:
@@ -56,6 +66,7 @@ poetry run python src/main.py
 
 ## 🛠 Makefile Commands Cheat Sheet
 We use a Makefile to simplify common operations. Here are the available commands:
+
 Command	Description
 * make up - Applies all pending migrations to the database
 * make down - Rolls back the latest applied migration.
