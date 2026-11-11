@@ -18,7 +18,7 @@ In the future, it will also be possible to subscribe to genres and types in orde
 Before you begin, ensure you have the following installed on your machine:
 - [Docker](https://docs.docker.com/get-docker/) & [Docker Compose](https://docs.docker.com/compose/install/)
 - [Make](https://www.gnu.org/software/make/)
-- Python 3.11+ (if running locally without Docker)
+- Python 3.11+
 - Dependency manager compatible with `pyproject.toml` [Poetry](https://python-poetry.org/)
 
 ## Getting Started
